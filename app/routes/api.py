@@ -10,6 +10,7 @@ from typing import Any
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
 
 from app.config import settings
 from app.okf import GuideBadge
@@ -22,18 +23,25 @@ router = APIRouter()
 SSE_HEADERS = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"}
 
 
+def store_latest_version(app: Any, slug: str) -> str:
+    store = app.state.store.refresh()
+    versions = store.list_versions(slug)
+    return versions[-1].version if versions else ""
+
+
 @router.get("/health")
 async def health(request: Request):
-    store = request.app.state.store
+    store = request.app.state.store.refresh()
     catalog_count = 0
     catalog_error = None
     try:
-        catalog_count = len(composio.load_catalog())
+        catalog_count = await run_in_threadpool(lambda: len(composio.load_catalog()))
     except Exception as exc:  # noqa: BLE001
         catalog_error = str(exc)
+    nim_status = await run_in_threadpool(nim.check_nim)
     return {
         "ok": True,
-        "nim": nim.check_nim(),
+        "nim": nim_status,
         "composio_key_present": settings.has_composio,
         "catalog_count": catalog_count,
         "catalog_error": catalog_error,
@@ -170,6 +178,14 @@ def _generation_stream(app: Any, user_input: str, deep: bool, badge: GuideBadge)
     def worker() -> None:
         try:
             fm = generate_guide(user_input, deep=deep, badge=badge, progress=events.put)
+            library_exists = app.state.store.refresh().get_published(fm.resource) is not None
+            if library_exists:
+                latest = store_latest_version(app, fm.resource)
+                events.put({
+                    "stage": "done", "slug": fm.resource, "version": latest,
+                    "library": True,
+                    "message": "Guide ready — note: a verified library guide also exists for this app; your fresh draft is versioned separately.",
+                })
         except GuideWorkflowError as exc:
             events.put({"stage": "error", "message": str(exc)})
         except Exception as exc:  # noqa: BLE001
@@ -186,7 +202,7 @@ def _generation_stream(app: Any, user_input: str, deep: bool, badge: GuideBadge)
     def event_stream():
         while True:
             try:
-                event = events.get(timeout=90)
+                event = events.get(timeout=25)
             except queue.Empty:
                 yield ": keepalive\n\n"
                 continue
@@ -210,7 +226,7 @@ class RegenerateRequest(BaseModel):
 @router.post("/guides/{slug}/regenerate")
 async def regenerate(request: Request, slug: str, payload: RegenerateRequest):
     store = request.app.state.store.refresh()
-    guide = store.get_active(slug)
-    name = guide.frontmatter.title.split("—")[0].strip() if guide else slug
-    stream = _generation_stream(request.app, name, payload.deep, "live_generated")
+    if store.get_active(slug) is None:
+        return JSONResponse({"error": f"no guide for {slug}"}, status_code=404)
+    stream = _generation_stream(request.app, slug, payload.deep, "live_generated")
     return StreamingResponse(stream, media_type="text/event-stream", headers=SSE_HEADERS)
