@@ -37,6 +37,7 @@ def crewai_llm(temperature: float = 0.2, timeout: int = 240, max_tokens: int = 8
         temperature=temperature,
         timeout=timeout,
         max_tokens=max_tokens,
+        context_window_size=1_000_000,  # nemotron-3-ultra: 1M-token context
     )
 
 
