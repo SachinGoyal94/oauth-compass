@@ -12,7 +12,7 @@
 |---|---|
 | Backend | **FastAPI** (Jinja2 templates + vanilla JS, no build step, no database) |
 | Agentic framework | **CrewAI** (sequential small crews, code-side validation of every agent decision) |
-| LLM | **NVIDIA NIM** — `nvidia/nemotron-3-ultra` @ `https://integrate.api.nvidia.com/v1` (OpenAI-compatible via LiteLLM `openai/` prefix) |
+| LLM | **NVIDIA NIM** — `nvidia/nemotron-3-ultra-550b-a55b` @ `https://integrate.api.nvidia.com/v1` (OpenAI-compatible via LiteLLM `openai/` prefix) |
 | Tools / data platform | **Composio** — toolkit catalog API (managed-vs-BYO, required fields) + **Composio Search** MCP toolkit (keyless web search, URL content fetch) + auth-config story for "what to do next" |
 | Knowledge format | **OKF** (Open Knowledge Format, adapted from Portfolio-Agent): markdown + YAML frontmatter, Pydantic-validated, draft → human-verified → stable governance |
 | Keys | `.env` only: `NVIDIA_API_KEY`, `COMPOSIO_API_KEY` (+ `COMPOSIO_USER_ID`). Never committed; `.env.example` documents them |
@@ -30,7 +30,6 @@ D:\Product_ops\
 │   ├── services\
 │   │   ├── composio.py    catalog cache read/search + auth details fetch
 │   │   ├── nim.py         CrewAI LLM factory + direct client + connectivity check
-│   │   ├── research.py    fetch_url (httpx+bs4), DuckDuckGo fallback, doc-URL heuristics
 │   │   └── generator.py   the 3-crew generation pipeline
 │   └── data\toolkits_cache.json   synced from Composio, committed
 ├── knowledge\guides\
@@ -120,7 +119,7 @@ drafts never appear in the featured grid · no keys anywhere in repo/zip.
 
 [2] RESEARCHER — fixed procedure, max_iter 10 (fast) / 14 (deep), temp 0.3
       tools: Composio Search MCP (Composio Web Search/Exa, Fetch URL Content,
-               DuckDuckGo fallback) via MCPServerAdapter (streamable-http + x-api-key)
+               session-managed) via MCPServerAdapter (streamable-http + x-api-key)
              + lookup_composio_toolkit (local catalog cache + auth details)
              + local fetch_url (resilience if Composio is down)
       fixed order:
@@ -178,7 +177,7 @@ Fast (~2 min) default · **Deep research** toggle.
 
 | Failure | Behavior |
 |---|---|
-| Composio MCP down | fall back to local `fetch_url` + DuckDuckGo tool |
+| Composio MCP down | generation fails loudly — no fallback search, by design |
 | App not in Composio catalog | researcher proceeds on official docs alone (noted in digest) |
 | Docs unreachable | low-confidence guide; `unverified[]` lists the gaps |
 | NIM error / timeout | clear error in the stream; no guide written |

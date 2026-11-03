@@ -6,7 +6,8 @@ for approval. That journey is opaque: is it 20 minutes or 3 weeks? What will blo
 
 **OAuth Compass** answers it two ways:
 
-1. **Guide library** — hand-verified, deeply structured setup guides for 8 apps spanning the
+1. **Guide library** — independently verified (agent verification crew, human-supervised),
+   deeply structured setup guides for 8 apps spanning the
    difficulty spectrum (instant → nuanced caps → weeks-long review).
 2. **Live generation** — submit *any* app name or website and watch an agent (CrewAI + NVIDIA NIM)
    research the provider's official docs and generate the same quality of guide in ~2 minutes,
@@ -15,6 +16,10 @@ for approval. That journey is opaque: is it 20 minutes or 3 weeks? What will blo
 Every claim in every guide is evidence-tagged (`verified_from_docs` / `reported` / `unknown`),
 sourced to the provider's own documentation, and separated into **hands-on setup time** vs
 **approval wait** — and every step says whether an **agent can automate it or a human must do it**.
+
+**🔗 Demo video (end-to-end walkthrough):** [Watch on Google Drive](https://drive.google.com/drive/folders/1RCfMPoHquCkhmJYZpY1YFoV-fCnUwgaM?usp=sharing)
+**🔗 Live experience:** [oauth-compass-frontend.vercel.app](https://oauth-compass-frontend.vercel.app) · API health: [oauth-compass-4guz.onrender.com/api/health](https://oauth-compass-4guz.onrender.com/api/health)
+**👤 Author:** Sachin Goyal · sachingoyal9274@gmail.com
 
 ## Quick start
 
@@ -45,7 +50,7 @@ copy .env.example .env        # then fill in your keys
 ```
 FastAPI ── templates + vanilla JS (no build step, no DB)
   ├── Part 1: OKF guide records (knowledge/guides/*.md)
-  │      governance: draft → human-verified → stable  (stale_after guards doc drift)
+  │      governance: draft → verified (agent:verification-crew, human-supervised) → stable  (stale_after guards doc drift)
   │      home: featured grid (8) + full Composio catalog toggle (~400)
   │      search resolves 3 cases: library hit / catalog profile / unknown → generate
   ├── Part 2: CrewAI pipeline (NVIDIA NIM, nemotron-3-ultra-550b-a55b)
@@ -68,8 +73,9 @@ Full plan with decisions: [plan.md](plan.md). Evidence journal: [VERIFICATION.md
   fallback path. The guides cite the provider's own pages.
 - **Time split** (`hands_on` vs `approval_wait`) is the product's core answer: it's the exact
   thing developers can't find out up front.
-- **Agent-drafted, human-verified library.** The same crew that generates live also drafted the
-  8 library guides; a verification pass then re-checked every claim against official provider docs —
+- **Agent-drafted, agent-verified library.** The same crew that generates live also drafted the
+  8 library guides; an independent verification agent then re-checked every claim against
+  official provider docs under human supervision —
   **~100 claims confirmed, 87 corrections applied** (see VERIFICATION.md).
 - **Versioned generations, user picks the active one.** Regenerating never overwrites.
 - **No dead ends.** Unknown apps flow straight into live generation.

@@ -196,7 +196,18 @@
               try {
                 var evt = JSON.parse(payload);
                 if (evt.stage === "done" && evt.slug) {
-                  resultLink.href = "/guide/" + evt.slug;
+                  resultLink.href = "/guide/" + encodeURIComponent(evt.slug) + (evt.version ? "?v=" + encodeURIComponent(evt.version) : "");
+                  resultLink.textContent = evt.version ? "View your new draft (" + evt.version + ") →" : "Open the guide →";
+                  var old = document.getElementById("library-link");
+                  if (old) old.remove();
+                  if (evt.library) {
+                    var lib = document.createElement("a");
+                    lib.id = "library-link";
+                    lib.className = "btn";
+                    lib.href = "/guide/" + encodeURIComponent(evt.slug);
+                    lib.textContent = "A verified library guide also exists — view it";
+                    resultWrap.insertBefore(lib, resultLink);
+                  }
                   resultWrap.hidden = false;
                 }
                 addLine(evt.stage, evt.message || "");

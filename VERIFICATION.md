@@ -15,7 +15,9 @@ Show what you learned, corrected, or could not verify."* This file is that recor
    facts. Community-reported figures (e.g. review durations without official numbers) are tagged
    `reported`, never `verified_from_docs`.
 3. **Publication:** corrections were applied programmatically, the guide was stamped
-   `verified: human:verification-pass`, `status: stable`, and published to the library.
+   `verified: agent:verification-crew` (independent verification agent, human-supervised —
+   the operator reviewed each verification report before publication), `status: stable`,
+   and published to the library.
    Per-app detail lives in `corrections/<app>-report.md` + `corrections/<app>.json`.
 
 **Not attempted:** no provider accounts were created, no OAuth apps were actually registered, and

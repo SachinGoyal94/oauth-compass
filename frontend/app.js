@@ -27,7 +27,7 @@
           '<div class="card-meta"><span>🛠 ' + esc(g.hands_on) + '</span><span>⏳ approval: ' + esc(g.approval_wait) + '</span></div></a>';
       }).join("");
       el("stats").innerHTML =
-        '<span class="stat"><span class="dot"></span><b>' + pubs.length + '</b> hand-verified guides</span>' +
+        '<span class="stat"><span class="dot"></span><b>' + pubs.length + '</b> verified guides</span>' +
         '<span class="stat"><span class="dot"></span><b>—</b> apps profiled</span>' +
         '<span class="stat"><span class="dot"></span><b>~2 min</b> live generation</span>' +
         '<span class="stat"><span class="dot"></span><b>3</b> difficulty tiers covered</span>';
@@ -302,7 +302,19 @@
                 try {
                   var evt = JSON.parse(payload);
                   if (evt.stage === "done" && evt.slug) {
-                    resultLink.href = "./guide.html?slug=" + encodeURIComponent(evt.slug);
+                    var base = "./guide.html?slug=" + encodeURIComponent(evt.slug);
+                    resultLink.href = base + (evt.version ? "&v=" + encodeURIComponent(evt.version) : "");
+                    resultLink.textContent = evt.version ? "View your new draft (" + evt.version + ") →" : "Open the guide →";
+                    var old = document.getElementById("library-link");
+                    if (old) old.remove();
+                    if (evt.library) {
+                      var lib = document.createElement("a");
+                      lib.id = "library-link";
+                      lib.className = "btn";
+                      lib.href = base;
+                      lib.textContent = "A verified library guide also exists — view it";
+                      resultWrap.insertBefore(lib, resultLink);
+                    }
                     resultWrap.hidden = false;
                   }
                   addLine(evt.stage, evt.message || "");
