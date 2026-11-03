@@ -69,10 +69,10 @@ class GuideStore:
                         self.errors.append(str(exc))
                 if versions:
                     slug = slug_dir.name
-                    self.drafts[slug] = versions
-                    self.active[slug] = self._read_active(slug_dir) or max(
-                        versions, key=lambda v: int(VERSION_RE.match(v).group(1))  # type: ignore[union-attr]
-                    )
+        self.drafts[slug] = versions
+        self.active[slug] = self._read_active(slug_dir) or max(
+            versions, key=lambda v: int(VERSION_RE.match(v).group(1))  # type: ignore[union-attr]
+        )
         return self
 
     def _read_active(self, slug_dir: Path) -> str | None:
@@ -118,7 +118,6 @@ class GuideStore:
     def activate(self, slug: str, version: str) -> bool:
         if version not in self.drafts.get(slug, {}):
             return False
-        self.drafts[slug].keys()  # keep type checkers happy
         (self.draft_dir(slug) / "active.json").write_text(
             json.dumps({"active": version}, indent=2), encoding="utf-8"
         )
@@ -145,7 +144,6 @@ class GuideStore:
             haystacks = [slug, title.replace(" ", "")]
             for alias in self.ALIASES.get(slug, ()):
                 haystacks.extend([alias, alias.replace(" ", "")])
-            score = min((2 if q in h else (1 if h.startswith(q) else 0)) for h in haystacks) if q else 0
             best = 3
             for h in haystacks:
                 if h == q:
@@ -231,6 +229,24 @@ def resolve_query(store: GuideStore, query: str) -> dict:
             ],
             "catalog": [],
         }
+    # A live-generated draft exists for this app even though no published guide does —
+    # surface it instead of pretending we know nothing (slug-shadowing fix).
+    qn = query.strip().lower().replace(" ", "")
+    for slug, versions in store.drafts.items():
+        if slug not in store.published and (slug.lower() == qn or slug.lower().startswith(qn) or qn in slug.lower()):
+            return {
+                "case": "draft",
+                "query": query,
+                "library": [],
+                "catalog": [],
+                "draft": {
+                    "slug": slug,
+                    "title": (store.get_active(slug) or list(versions.values())[0]).frontmatter.title,
+                    "active": store.active.get(slug, ""),
+                    "url": f"/guide/{slug}",
+                },
+                "generate_url": f"/generate?app={query}",
+            }
     try:
         catalog = composio.search_catalog(query)
     except FileNotFoundError:
