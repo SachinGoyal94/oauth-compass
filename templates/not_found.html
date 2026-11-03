@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Not found — OAuth Compass{% endblock %}
+{% block content %}
+<section class="hero">
+  <span class="kicker">Not in the library yet</span>
+  <h1>No guide for <span class="grad">“{{ slug }}”</span>.</h1>
+  <p class="hero-sub">It isn't hand-verified yet — but the agent can research it live right now and
+  hand you a shareable guide in about two minutes.</p>
+  <a class="btn btn-primary" href="/generate?app={{ slug }}">Generate a guide for {{ slug }}
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+  </a>
+</section>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Generate a guide — OAuth Compass{% endblock %}
+{% block content %}
+<section class="gen-hero">
+  <span class="kicker" style="display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);border:1px solid color-mix(in srgb, var(--accent) 25%, transparent);padding:5px 14px;border-radius:999px;margin-bottom:20px;">⚡ Live agent · research via Composio</span>
+  <h1>Generate a guide for <span style="background:linear-gradient(92deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent;">any app</span></h1>
+  <p class="hero-sub" style="color:var(--ink-soft);max-width:640px;margin:0 auto;">The agent resolves the app, checks the Composio catalog, searches and reads the provider's official docs,
+  then writes a structured guide with per-claim evidence tags. Typical run: ~2 minutes.</p>
+</section>
+
+<section class="gen-controls">
+  <label class="form-label" for="gen-input">App name or website</label>
+  <div class="gen-row">
+    <input id="gen-input" class="form-control" type="text" value="{{ prefill }}"
+           placeholder="e.g. Airtable, zoom.us, Figma…">
+    <label class="form-check">
+      <input type="checkbox" id="gen-deep" class="form-check-input">
+      <span>Deep research (slower, more sources)</span>
+    </label>
+    <button id="gen-btn" class="btn btn-primary" type="button">Generate guide</button>
+  </div>
+</section>
+
+<section class="gen-progress-wrap">
+  <h2>Agent activity</h2>
+  <div id="gen-progress" class="gen-progress" aria-live="polite">
+    <div class="muted" id="gen-idle" style="font-family:var(--font);">Submit an app to watch the agent work — resolving, searching, reading, synthesizing.</div>
+  </div>
+</section>
+
+<section id="gen-result" class="gen-result" hidden>
+  <a id="gen-result-link" class="btn btn-primary" href="#">Open the guide →</a>
+</section>
+
+<section class="gen-note">
+  <strong>What the agent can and cannot do:</strong> it searches and reads official provider documentation
+  through Composio's managed tools. It cannot log into consoles, create accounts, or measure real review
+  durations — timelines are whatever sources support, and everything unconfirmed lands in the guide's
+  "could not verify" list.
+</section>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}OAuth Compass — know the path to connecting any app{% endblock %}
+{% block content %}
+<section class="hero">
+  <span class="kicker"><span class="pulse"></span> Agent-drafted · human-verified · evidence on every claim</span>
+  <h1>Know the path to connecting<br><span class="grad">any app</span>. Before you build.</h1>
+  <p class="hero-sub">Registering an OAuth app can take 20 minutes — or 3 weeks inside a provider's
+  review queue. OAuth Compass tells you which, before you commit: hands-on time vs approval wait,
+  every gotcha, and exactly where an agent can take over.</p>
+  <div class="search-wrap">
+    <span class="search-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
+    <input id="search-box" type="search" placeholder="Search an app — slack, gmail, salesforce, airtable…" autocomplete="off">
+    <span class="search-hint">↵ generate</span>
+    <div id="search-results" class="search-results" hidden></div>
+  </div>
+  <div class="stats">
+    <span class="stat"><span class="dot"></span><b>{{ published|length }}</b> hand-verified guides</span>
+    <span class="stat"><span class="dot"></span><b>{{ catalog_count }}</b> apps profiled</span>
+    <span class="stat"><span class="dot"></span><b>~2 min</b> live generation</span>
+    <span class="stat"><span class="dot"></span><b>3</b> difficulty tiers covered</span>
+  </div>
+  <div class="ticker-wrap" aria-hidden="true">
+    <div class="ticker">
+      {% for name in ticker_names %}<span><i></i>{{ name }}</span>{% endfor %}
+      {% for name in ticker_names %}<span><i></i>{{ name }}</span>{% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="section reveal">
+  <div class="section-head">
+    <div>
+      <p class="kicker2">The library</p>
+      <h2>Hand-verified guides</h2>
+    </div>
+    <span class="muted text-small">drafted by agents · confirmed line-by-line against official docs</span>
+  </div>
+  <div class="grid">
+    {% for g in published %}
+    <a class="card guide-card" href="/guide/{{ g.slug }}">
+      <div class="card-top">
+        <span class="badge tier-{{ g.level }}">{{ g.tier }}</span>
+        {% if g.managed is true %}<span class="badge badge-managed no-dot">Composio-managed</span>
+        {% elif g.managed is false %}<span class="badge badge-byo no-dot">Bring your own</span>{% endif %}
+      </div>
+      <h3>{{ g.title }}</h3>
+      <p>{{ g.summary }}</p>
+      <div class="card-meta">
+        <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>{{ g.hands_on }}</span>
+        <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9 14l2-2 2 2 2-2"/></svg>approval: {{ g.approval_wait }}</span>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="section reveal">
+  <div class="section-head">
+    <div>
+      <p class="kicker2">Beyond the library</p>
+      <h2>Any other app?</h2>
+    </div>
+    <button id="catalog-toggle" class="btn" type="button">Browse {{ catalog_count }} apps in the Composio catalog</button>
+  </div>
+  <p class="muted" style="margin-top:0;">Every app below supports OAuth and can be profiled instantly.
+  No guide yet? The agent generates one in about two minutes — researched entirely through Composio.</p>
+  <div id="catalog-panel" class="grid" hidden></div>
+  <div id="catalog-status" class="muted text-small" hidden></div>
+</section>
+
+<section class="cta reveal">
+  <div>
+    <h2>Don't see your app?</h2>
+    <p class="muted">Submit its name or website — an agent researches the provider's official docs through
+    Composio's managed search and drafts a shareable, evidence-tagged guide in real time.</p>
+  </div>
+  <a class="btn btn-primary" href="/generate">Generate a guide
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+  </a>
+</section>
+{% endblock %}

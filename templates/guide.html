@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}{{ fm.title }} — OAuth Compass{% endblock %}
+{% block content %}
+<article class="guide">
+  <header class="guide-head">
+    <div class="badges">
+      <span class="badge tier-{{ g.difficulty.level }}">{{ g.difficulty.tier }} · {{ g.difficulty.level }}/5</span>
+      {% if g.composio_next.managed is true %}<span class="badge badge-managed no-dot">Composio-managed OAuth</span>
+      {% elif g.composio_next.managed is false %}<span class="badge badge-byo no-dot">Bring your own OAuth app</span>{% endif %}
+      {% if shown_version %}<span class="badge badge-version no-dot">{{ shown_version }}</span>{% endif %}
+      <span class="badge no-dot">checked {{ fm.last_checked or "—" }}</span>
+    </div>
+    <h1>{{ fm.title }}</h1>
+    <p class="lede">{{ g.summary }}</p>
+    <div class="timebar">
+      <div class="timebar-cell"><span class="muted">Hands-on setup</span><strong>{{ g.time.hands_on }}</strong></div>
+      <div class="timebar-cell"><span class="muted">Approval wait</span><strong>{{ g.time.approval_wait }}</strong></div>
+      <div class="timebar-cell"><span class="muted">Difficulty</span><strong>{{ g.difficulty.tier }} ({{ g.difficulty.level }}/5)</strong></div>
+      <div class="timebar-cell"><span class="muted">Verdict</span><strong>{{ g.time.verdict }}</strong></div>
+    </div>
+    {% if versions|length > 1 %}
+    <div class="versions">
+      <span class="muted text-small">Versions:</span>
+      {% for v in versions %}
+      <a class="btn btn-xs {{ 'btn-primary' if (shown_version or '') == v.version else '' }}"
+         href="/guide/{{ fm.resource }}?v={{ v.version }}">{{ v.version }}</a>
+      {% endfor %}
+      {% if shown_version and shown_version != active_version %}
+      <button class="btn btn-xs" type="button" id="activate-btn" data-slug="{{ fm.resource }}" data-version="{{ shown_version }}">
+        Make {{ shown_version }} active
+      </button>
+      {% endif %}
+    </div>
+    {% endif %}
+  </header>
+
+  {% if g.prerequisites %}
+  <section class="g-section">
+    <h2>Prerequisites</h2>
+    <ul class="prereq-list">
+      {% for p in g.prerequisites %}
+      <li>
+        {% if p.blocking %}<span class="badge badge-req">required</span>{% else %}<span class="badge no-dot">optional</span>{% endif %}
+        <span><strong>{{ p.item }}</strong>{% if p.detail %} — {{ p.detail }}{% endif %}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  <section class="g-section">
+    <h2>Step-by-step</h2>
+    <ol class="steps">
+      {% for s in g.steps %}
+      <li class="step" data-n="{{ s.n }}">
+        <div class="step-head">
+          <h3>{{ s.title }}</h3>
+          {% if s.agent_automatable %}<span class="badge badge-agent no-dot" data-tooltip="{{ s.human_because or 'An agent can prepare or automate this' }}">⚡ agent-automatable</span>
+          {% else %}<span class="badge badge-human no-dot" data-tooltip="{{ s.human_because or 'Requires you in the provider console' }}">🧑 human step</span>{% endif %}
+          {% if s.duration %}<span class="muted text-small">~{{ s.duration }}</span>{% endif %}
+        </div>
+        {% if s.where %}<div class="step-where">📍 {{ s.where }}</div>{% endif %}
+        <p>{{ s.action }}</p>
+        {% if s.nuances %}<div class="nuance"><strong>Nuance</strong> — {{ s.nuances }}</div>{% endif %}
+        <div class="evidence-line">
+          <span class="ev ev-{{ s.evidence }}">{{ s.evidence }}</span>
+          {% if s.source_url %}<a href="{{ s.source_url }}" target="_blank" rel="noopener" class="src-link">source
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></a>{% endif %}
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  {% if g.gotchas %}
+  <section class="g-section">
+    <h2>Gotchas that bite people</h2>
+    <div class="gotchas">
+      {% for got in g.gotchas %}
+      <div class="gotcha">
+        <h3>{{ got.title }} <span class="ev ev-{{ got.evidence }}">{{ got.evidence }}</span></h3>
+        <p>{{ got.why_it_matters }}</p>
+        {% if got.how_to_handle %}<p class="fix"><strong>Handle it:</strong> {{ got.how_to_handle }}</p>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if g.blockers %}
+  <section class="g-section">
+    <h2>Common blockers &amp; escalation</h2>
+    <ul class="blockers">
+      {% for b in g.blockers %}
+      <li>
+        <strong>{{ b.issue }}</strong> — {{ b.how_to_resolve }}
+        {% if b.escalation %}<span class="muted">Escalation: {{ b.escalation }}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  <section class="g-section">
+    <div class="two-col">
+      <div class="avh-panel avh-agent">
+        <h2><span class="avh-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4m-5 8h.01M17 12h.01M9 16h6"/></svg></span>What an agent can do for you</h2>
+        <ul class="agent-can">
+          {% for item in g.agent_vs_human.agent_can %}<li>{{ item }}</li>{% endfor %}
+        </ul>
+      </div>
+      <div class="avh-panel avh-human">
+        <h2><span class="avh-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg></span>Where you must take over</h2>
+        <ul class="human-must">
+          {% for item in g.agent_vs_human.human_must %}<li>{{ item }}</li>{% endfor %}
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="g-section composio-next">
+    <h2>Connect it via Composio</h2>
+    <div class="panel">
+      {% if g.composio_next.managed is true %}
+        <p>{{ g.composio_next.managed_note or "Composio provides the OAuth app for this toolkit — you don't need to register one." }}</p>
+      {% else %}
+        <p>Register this redirect URI in the provider console, then create the auth config:</p>
+        <pre><code>{{ g.composio_next.redirect_uri_to_register }}</code></pre>
+        {% if g.composio_next.auth_config_fields %}
+        <p>Required credential fields:
+          {% for f in g.composio_next.auth_config_fields %}<code>{{ f }}</code>{% if not loop.last %} {% endif %}{% endfor %}</p>
+        {% endif %}
+        {% if g.composio_next.auth_config_snippet %}
+        <pre><code>{{ g.composio_next.auth_config_snippet }}</code></pre>
+        {% endif %}
+      {% endif %}
+      {% if g.composio_next.mcp_note %}<p class="muted">{{ g.composio_next.mcp_note }}</p>{% endif %}
+    </div>
+  </section>
+
+  <section class="g-section">
+    <div class="evidence-panel">
+      <h2 style="display:flex;align-items:center;gap:10px;font-size:21px;margin:0 0 14px;font-family:var(--display);">Evidence &amp; provenance</h2>
+      <ul class="sources">
+        {% for s in fm.sources %}
+        <li><a href="{{ s.url }}" target="_blank" rel="noopener">{{ s.title }} ↗</a> — {{ s.what_it_supports }}</li>
+        {% endfor %}
+      </ul>
+      {% if fm.unverified %}
+      <div class="unverified">
+        <strong>Could not verify — treat with care:</strong>
+        <ul>{% for u in fm.unverified %}<li>{{ u }}</li>{% endfor %}</ul>
+      </div>
+      {% endif %}
+      <p class="provenance">
+        <span class="badge no-dot">{{ fm.status }}</span>
+        <span>generated by <code>{{ fm.generated.by if fm.generated else "unknown" }}</code></span>
+        {% if fm.verified %}<span>· verified by <code>{{ fm.verified.by }}</code></span>{% else %}<span>· <strong>not yet human-verified</strong></span>{% endif %}
+        <span>· last checked {{ fm.last_checked or "—" }}</span>
+        {% if fm.stale_after %}<span>· re-verify after {{ fm.stale_after }}</span>{% endif %}
+      </p>
+    </div>
+  </section>
+</article>
+{% endblock %}
