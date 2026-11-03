@@ -79,14 +79,56 @@ async def guides(request: Request):
             {
                 "slug": g.slug,
                 "title": g.frontmatter.title,
+                "summary": g.frontmatter.guide.summary,
                 "tier": g.frontmatter.guide.difficulty.tier,
+                "level": g.frontmatter.guide.difficulty.level,
                 "hands_on": g.frontmatter.guide.time.hands_on,
                 "approval_wait": g.frontmatter.guide.time.approval_wait,
+                "verdict": g.frontmatter.guide.time.verdict,
                 "managed": g.frontmatter.guide.composio_next.managed,
             }
             for g in store.published_list()
         ],
         "drafts": sorted(store.drafts.keys()),
+    }
+
+
+@router.get("/guides/{slug}")
+async def guide_detail(request: Request, slug: str, v: str | None = None):
+    store = request.app.state.store.refresh()
+    guide = None
+    if v:
+        guide = next((ver.guide for ver in store.list_versions(slug) if ver.version == v), None)
+    if guide is None:
+        guide = store.get_active(slug)
+    if guide is None:
+        return JSONResponse({"error": f"no guide for {slug}"}, status_code=404)
+    fm, g = guide.frontmatter, guide.frontmatter.guide
+    versions = store.list_versions(slug)
+    return {
+        "slug": fm.resource,
+        "title": fm.title,
+        "status": fm.status,
+        "shown_version": v or (store.active.get(slug) if slug in store.drafts else None),
+        "versions": [{"version": x.version} for x in versions],
+        "active_version": store.active.get(slug),
+        "difficulty": g.difficulty.model_dump(),
+        "time": g.time.model_dump(),
+        "summary": g.summary,
+        "prerequisites": [p.model_dump() for p in g.prerequisites],
+        "steps": [s.model_dump() for s in g.steps],
+        "gotchas": [x.model_dump() for x in g.gotchas],
+        "blockers": [b.model_dump() for b in g.blockers],
+        "agent_vs_human": g.agent_vs_human.model_dump(),
+        "composio_next": g.composio_next.model_dump(),
+        "sources": [s.model_dump() for s in fm.sources],
+        "unverified": fm.unverified,
+        "provenance": {
+            "generated_by": fm.generated.by if fm.generated else "unknown",
+            "verified_by": fm.verified.by if fm.verified else None,
+            "last_checked": str(fm.last_checked or ""),
+            "stale_after": str(fm.stale_after or ""),
+        },
     }
 
 

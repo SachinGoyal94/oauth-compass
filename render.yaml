@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: oauth-compass-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: NVIDIA_API_KEY
+        sync: false          # set in the Render dashboard from .env values
+      - key: COMPOSIO_API_KEY
+        sync: false          # set in the Render dashboard from .env values
+      - key: COMPOSIO_USER_ID
+        value: oauth-guide-builder
+      - key: PYTHON_VERSION
+        value: 3.13.4
