@@ -38,7 +38,6 @@ class Settings:
     toolkits_cache: Path = data_dir / "toolkits_cache.json"
 
     # Agent behaviour
-    max_doc_pages: int = int(os.getenv("MAX_DOC_PAGES", "8"))
     fast_mode_pages: int = int(os.getenv("FAST_MODE_PAGES", "6"))
     deep_mode_pages: int = int(os.getenv("DEEP_MODE_PAGES", "12"))
 

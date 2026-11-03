@@ -25,3 +25,7 @@ build/
 # editor code-runner temp
 tempCodeRunnerFile.py
 VIDEO_SCRIPT.md
+
+# local tool artifacts
+.mimosa/
+tempCodeRunnerFile.py
