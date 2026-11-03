@@ -14,4 +14,4 @@ services:
       - key: COMPOSIO_USER_ID
         value: oauth-guide-builder
       - key: PYTHON_VERSION
-        value: 3.13.4
+        value: 3.13.9
