@@ -1,0 +1,323 @@
+{
+  "guide": {
+    "summary": "Register an OAuth 2.0 / OpenID Connect application in Microsoft Entra ID (formerly Azure AD) via the Microsoft Entra admin center. App registration is free and instant — there is no Microsoft review of the registration itself. Optional publisher verification (for the Verified Publisher badge) requires a verified Microsoft AI Cloud Partner Program (MCPP) account; per Microsoft docs, once its prerequisites are met the verification completes in minutes. The 3–5 business day figure officially documented by Microsoft applies to the underlying Partner Center (MCPP) account verification, not to the app-verification step.",
+    "difficulty": {
+      "level": 3,
+      "tier": "Moderate",
+      "verdict": "App registration is straightforward (instant, no review). Publisher verification adds partner-program prerequisites, dual-admin roles, and an MFA-authenticated session; the in-portal verification itself processes in a few minutes per Microsoft docs, but the prerequisite MCPP/Partner Center account verification is documented to take 3–5 business days. Overall effort stays Moderate.",
+      "evidence": "verified_from_docs",
+      "source_url": "https://learn.microsoft.com/en-us/entra/identity-platform/publisher-verification-overview"
+    },
+    "time": {
+      "hands_on": "15–30 minutes for registration, platform config, and client secret creation (user estimate; portal pacing is not documented)",
+      "approval_wait": "Publisher verification itself: 'Wait for the request to process, this may take a few minutes' and 'Developers who have already met these requirements can be verified in minutes' (verified_from_docs). The documented 3–5 business day wait ('In most cases, the process takes three to five business days') belongs to Partner Center/MCPP account verification — a prerequisite, not the app-verification step. Badge replication to consent prompts 'may take some time' after success (community reports of 24–72 hours are not documented).",
+      "verdict": "Registration itself is instant. Publisher verification processes in minutes when prerequisites (verified MCPP account, publisher domain, dual roles, MFA in session) are already met; MCPP enrollment/account verification is the real async wait (3–5 business days per Partner Center docs).",
+      "evidence": "verified_from_docs",
+      "source_url": "https://learn.microsoft.com/en-us/entra/identity-platform/publisher-verification-overview"
+    },
+    "prerequisites": [
+      {
+        "item": "Microsoft Entra tenant (work/school account)",
+        "detail": "Required for app registration and publisher verification. Apps registered with a personal Microsoft account (MSA/consumer) cannot be publisher verified (error MSANotSupported), and the feature is not supported in Azure AD B2C tenants (error B2CTenantNotAllowed) or in national clouds.",
+        "blocking": true,
+        "evidence": "verified_from_docs",
+        "source_url": "https://learn.microsoft.com/en-us/entra/identity-platform/publisher-verification-overview"
+      },
+      {
+        "item": "Application Developer role (minimum) for registration; Application Administrator or Cloud Application Administrator for publisher verification",
+        "detail": "The Entra quickstart states app registration requires 'at least an Application Developer' (the Microsoft Graph quickstart lists Cloud Application Administrator as least-privileged for its steps). The elevated Application Administrator or Cloud Application Administrator role is required only for the publisher-verification submission.",
+        "blocking": true,
+        "evidence": "verified_from_docs",
+        "source_url": "https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app"
+      },
+      {
+        "item": "Microsoft AI Cloud Partner Program (MCPP) membership with verified Partner Global Account (PGA)",
+        "detail": "Required only for publisher verification. The Partner One ID must belong to a verified MCPP account and be the partner global account (PGA) — location Partner One IDs (PLAs) are not supported. The Entra tenant where the app is registered must be associated with the PGA.",
+        "blocking": false,
+        "evidence": "verified_from_docs",
+        "source_url": "https://learn.microsoft.com/en-us/entra/identity-platform/publisher-verification-overview"
+      },
+      {
+        "item": "Partner Center admin role (CPP Partner Admin / Account Admin) for publisher verification submission",
+        "detail": "The user who initiates verification must hold an eligible role in BOTH systems: Application Administrator or Cloud Application Administrator in Entra ID, and CPP (Microsoft AI Cloud Partner Program) Admin or Accounts Admin in Partner Center.",
+        "blocking": false,
+        "evidence": "verified_from_docs",
+        "source_url": "https://learn.microsoft.com/en-us/entra/identity-platform/mark-app-as-publisher-verified"
+      },
+      {
+        "item": "Publisher domain set (not *.onmicrosoft.com) matching the MCPP verification email domain",
+        "detail": "Required only for publisher verification. The app must have a publisher domain, it cannot be *.onmicrosoft.com, and it (or a DNS-verified custom domain on the tenant) must match the domain of the email address used during MCPP account verification.",
+        "blocking": false,
+        "evidence": "verified_from_docs",
+        "source_url": "https://learn.microsoft.com/en-us/entra/identity-platform/publisher-verification-overview"
+      },
+      {
+        "item": "MFA-enabled admin session",
+        "detail": "Mandatory during publisher verification submission: MFA must be performed in the same session — if MFA is enabled but not required/performed in that session, the request fails (error InteractionRequired).",
+        "blocking": false,
+        "evidence": "verified_from_docs",
+        "source_url": "https://learn.microsoft.com/en-us/entra/identity-platform/troubleshoot-publisher-verification"
+      }
+    ],
+    "steps": [
+      {
+        "n": 1,
+        "title": "Sign in to Microsoft Entra admin center",
+        "where": "https://entra.microsoft.com/",
+        "action": "Sign in with a work/school account in the target tenant. The Entra quickstart requires at least the Application Developer role; the Microsoft Graph quickstart lists Cloud Application Administrator as the least-privileged role for its registration walkthrough.",
+        "duration": "1–2 minutes",
+        "agent_automatable": false,
+        "human_because": "Requires interactive login with MFA and admin credentials.",
+        "nuances": "Use the Settings icon to switch to the correct tenant if you have access to multiple ones. Personal Microsoft accounts cannot be used for publisher verification (apps registered with a Microsoft account cannot be publisher verified).",
+        "evidence": "verified_from_docs",
+        "source_url": "https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app"
+      },
+      {
+        "n": 2,
+        "title": "Create a new app registration",
+        "where": "Entra admin center → Entra ID/Identity → Applications → App registrations → New registration",
+        "action": "Enter a display name, choose a supported account type — 'Accounts in this organizational directory only' (single tenant), 'Accounts in any organizational directory' (multitenant), 'Accounts in any organizational directory and personal Microsoft accounts' (multitenant + personal), or 'Personal Microsoft accounts only' — optionally add a redirect URI now (leaving it blank is fine; configure it after registration), then click Register.",
+        "duration": "2–3 minutes",
+        "agent_automatable": false,
+        "human_because": "Console form-filling and button clicks in the provider portal.",
+        "nuances": "For publisher verification later, choose a multitenant option: Microsoft describes publisher verification as primarily for multitenant apps, and users consenting to newly registered multitenant apps that lack verification (permissions beyond basic profile, where risk-based step-up consent is enabled) see an unverified-publisher warning. Whether single-tenant apps can display the badge is not stated in current official docs. Also note: new app registrations are hidden from users on the My Apps page by default.",
+        "evidence": "verified_from_docs",
+        "source_url": "https://learn.microsoft.com/en-us/graph/auth-register-app-v2"
+      },
+      {
+        "n": 3,
+        "title": "Record Application (client) ID and Directory (tenant) ID",
+        "where": "App registration Overview page",
+        "action": "Copy the Application (client) ID (and Object ID) and the Directory (tenant) ID shown on the Overview page. These are needed for OAuth configuration.",
+        "duration": "1 minute",
+        "agent_automatable": false,
+        "human_because": "Values are displayed only in the portal after registration.",
+        "nuances": "Tenant ID is required for tenant-scoped endpoints, e.g. https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize. Valid {tenant} values: common, organizations, consumers, or a tenant ID/domain.",
+        "evidence": "verified_from_docs",
+        "source_url": "https://learn.microsoft.com/en-us/graph/auth-register-app-v2"
+      },
+      {
+        "n": 4,
+        "title": "Configure platform and redirect URIs",
+        "where": "App registration → Authentication → Add a platform",
+        "action": "Select platform type (Web, SPA, Mobile and desktop, iOS/macOS, Android), then add redirect URIs. For Composio, add https://backend.composio.dev/api/v3/toolkits/auth/callback. Save.",
+        "duration": "2–3 minutes",
+        "agent_automatable": false,
+        "human_because": "Portal UI interaction required to add platform and URIs.",
+        "nuances": "Redirect URIs must be HTTPS; http is supported only for localhost (port is ignored when matching localhost URIs; IPv6 loopback [::1] is not supported; use 127.0.0.1 where possible). Maximum redirect URIs: 256 for apps signing in work/school accounts only (single- or multitenant), 100 when personal Microsoft accounts are also supported (AzureADandPersonalMicrosoftAccount); each URI ≤256 chars. Special characters ! $ ' ( ) , ; and Internationalized Domain Names are not supported. Query parameters in redirect URIs are not allowed for apps that support personal Microsoft accounts. Wildcards are unsupported for apps signing in personal accounts; for work/school-only apps they can be set via the manifest editor but are strongly discouraged. Always add URIs on the application object, never the service principal. SPAs must use redirect type 'spa' (auth code flow with PKCE and CORS); web apps use type 'web'.",
+        "evidence": "verified_from_docs",
+        "source_url": "https://learn.microsoft.com/en-us/entra/identity-platform/reply-url"
+      },
+      {
+        "n": 5,
+        "title": "Create a client secret (for confidential clients)",
+        "where": "App registration → Certificates & secrets → New client secret",
+        "action": "Add a description, choose an expiry or custom lifetime (secret lifetime is limited to two years / 24 months or less — you cannot specify a custom lifetime longer than 24 months; Microsoft recommends less than 12 months), click Add. Immediately copy the secret value — it is shown only once and cannot be retrieved later.",
+        "duration": "1–2 minutes",
+        "agent_automatable": false,
+        "human_because": "Secret value is displayed once in the portal and must be securely recorded by a human.",
+        "nuances": "For public clients (SPA, mobile, desktop) use PKCE instead of a client secret — public clients must not use secrets or certificates when redeeming authorization codes. Certificates (recommended as more secure) or federated credentials are alternatives for confidential clients. Store the secret securely (e.g., key vault).",
+        "evidence": "verified_from_docs",
+        "source_url": "https://learn.microsoft.com/en-us/graph/auth-register-app-v2"
+      },
+      {
+        "n": 6,
+        "title": "Configure API permissions (if calling Microsoft Graph or other APIs)",
+        "where": "App registration → API permissions → Add a permission",
+        "action": "Select Microsoft Graph (or other API), choose Delegated or Application permissions, add required scopes (User.Read is granted by default at registration), then click Add permissions. Optionally grant admin consent for the tenant.",
+        "duration": "2–5 minutes",
+        "agent_automatable": false,
+        "human_because": "Permission selection and admin consent grant require portal interaction.",
+        "nuances": "User.Read (basic profile) needs no admin consent; high-privilege permissions such as User.Read.All, Group.Read.All, and Directory.ReadWrite.All are admin-restricted — non-admin organizational users get an error that they are not authorized to consent. Who can grant tenant-wide admin consent (current docs): Privileged Role Administrator for any permission and any API (including Microsoft Graph application permissions); Cloud Application Administrator, AI Administrator, or Application Administrator for everything except Microsoft Graph application permissions. Admin consent can also be requested via https://login.microsoftonline.com/{tenant}/v2.0/adminconsent (do not use 'common' there). Delegated permissions are for user-context flows; Application permissions (app roles) for daemon/service-to-service flows and only admins can consent to them.",
+        "evidence": "verified_from_docs",
+        "source_url": "https://learn.microsoft.com/en-us/entra/identity/enterprise-apps/grant-admin-consent"
+      },
+      {
+        "n": 7,
+        "title": "Optional: Submit for publisher verification (Verified Publisher badge)",
+        "where": "App registration → Branding & properties → Add Partner ID to verify publisher",
+        "action": "Enter your Partner One ID (from a verified MCPP account; must be the Partner Global Account, not a location ID), ensure the publisher domain matches the domain verified in Partner Center, submit with an MFA-authenticated session, then 'Verify and save'.",
+        "duration": "5–10 minutes to submit; verification processes in a few minutes when prerequisites are met (per docs); MCPP/Partner Center account verification can take 3–5 business days",
+        "agent_automatable": false,
+        "human_because": "Requires Partner Center admin role, MFA session, and acceptance of the Microsoft identity platform Terms of Use.",
+        "nuances": "Microsoft describes publisher verification as primarily for multitenant apps; per official docs, 'Developers who have already met these requirements can be verified in minutes' and after submission 'Wait for the request to process, this may take a few minutes'; the badge then appears on consent prompts soon after, though replication 'may take some time' (community-reported 24–72 hours is not documented). The 3–5 business day figure documented by Microsoft applies to Partner Center account verification, a prerequisite, not to this step. Requirements: verified MCPP PGA, publisher domain set (not *.onmicrosoft.com) matching the MCPP email verification domain, Application Administrator/Cloud Application Administrator + Partner Center CPP Admin/Account Admin, MFA in the same session. Not supported for apps registered with a Microsoft account, Azure AD B2C tenants, or national clouds. Verification is free.",
+        "evidence": "verified_from_docs",
+        "source_url": "https://learn.microsoft.com/en-us/entra/identity-platform/publisher-verification-overview"
+      },
+      {
+        "n": 8,
+        "title": "Test the OAuth flow",
+        "where": "Any HTTP client or browser",
+        "action": "Construct the authorization URL: https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize?client_id={client_id}&response_type=code&redirect_uri={redirect_uri}&scope={scopes}&response_mode=query&state={state}. Complete consent, exchange code for token at https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token.",
+        "duration": "5–10 minutes",
+        "agent_automatable": true,
+        "human_because": "None — automated test scripts can perform the flow.",
+        "nuances": "Use 'common' as tenant for multitenant apps supporting both work/school and personal accounts ('organizations' for Entra-only, 'consumers' for personal-only). Include 'offline_access' scope to receive refresh tokens. PKCE is required for SPAs and recommended for all clients. Authorization codes typically expire after about 1 minute; access tokens default to a variable 60–90 minute lifetime (75 min average).",
+        "evidence": "verified_from_docs",
+        "source_url": "https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow"
+      }
+    ],
+    "gotchas": [
+      {
+        "title": "Client secret shown only once",
+        "why_it_matters": "If not copied immediately, the secret is unrecoverable and a new one must be created. Secret lifetime is capped at 24 months.",
+        "how_to_handle": "Copy to a secure password manager or key vault at creation time and treat it as a password. Microsoft recommends expiry under 12 months and, for production, prefers certificates or federated credentials over secrets.",
+        "evidence": "verified_from_docs",
+        "source_url": "https://learn.microsoft.com/en-us/graph/auth-register-app-v2"
+      },
+      {
+        "title": "Redirect URI limits and rules",
+        "why_it_matters": "Exceeding limits or using invalid formats causes registration errors or runtime failures (AADSTS50011 mismatch errors).",
+        "how_to_handle": "Max 100 URIs when personal Microsoft accounts are supported, 256 for work/school-only apps. Each URI ≤256 chars, HTTPS only (http allowed only for localhost; port ignored for localhost matching; [::1] unsupported). No special characters ! $ ' ( ) , ; and no IDN. No query parameters in redirect URIs for apps that support personal accounts. Wildcards are unsupported for apps signing in personal accounts; possible-but-discouraged via manifest for work/school-only apps. Add URIs on the application object, not the service principal.",
+        "evidence": "verified_from_docs",
+        "source_url": "https://learn.microsoft.com/en-us/entra/identity-platform/reply-url"
+      },
+      {
+        "title": "Publisher verification is designed primarily for multitenant apps",
+        "why_it_matters": "Microsoft documents publisher verification as 'primarily for developers who build multitenant apps'; the unverified-publisher warning applies to newly registered multitenant apps requesting permissions beyond basic profile where risk-based step-up consent is enabled.",
+        "how_to_handle": "Choose a multitenant supported account type at registration if publisher verification matters to you. Current official docs do not explicitly state whether single-tenant apps can display the badge (treat the absolute 'never shown for single-tenant' claim as community-reported).",
+        "evidence": "verified_from_docs",
+        "source_url": "https://learn.microsoft.com/en-us/entra/identity-platform/publisher-verification-overview"
+      },
+      {
+        "title": "Dual admin role requirement for publisher verification",
+        "why_it_matters": "Submission fails (NotAuthorizedToVerifyPublisher / MPNAccountNotFoundOrNoAccess) if the initiating user lacks both an eligible Entra role and an eligible Partner Center role.",
+        "how_to_handle": "The same user who initiates verification must hold one of Application Administrator / Cloud Application Administrator (Entra ID) AND one of CPP (Microsoft AI Cloud Partner Program) Admin / Accounts Admin (Partner Center). Confirm both before starting.",
+        "evidence": "verified_from_docs",
+        "source_url": "https://learn.microsoft.com/en-us/entra/identity-platform/mark-app-as-publisher-verified"
+      },
+      {
+        "title": "Publisher domain cannot be *.onmicrosoft.com",
+        "why_it_matters": "Verification fails (NoPublisherDomainOnApplication / PublisherDomainMismatch) without a publisher domain that matches the domain used for email verification in Partner Center.",
+        "how_to_handle": "Set the app's publisher domain (not *.onmicrosoft.com) and ensure it — or a DNS-verified custom domain on the tenant — matches the domain of the MCPP primary-contact email before submitting.",
+        "evidence": "verified_from_docs",
+        "source_url": "https://learn.microsoft.com/en-us/entra/identity-platform/troubleshoot-publisher-verification"
+      },
+      {
+        "title": "MFA mandatory for verification submission",
+        "why_it_matters": "Submission fails with InteractionRequired if MFA was not performed in the same session — docs note that 'If MFA is enabled but not required to be performed in the session, the request fails.'",
+        "how_to_handle": "Ensure MFA is enabled and required for the admin user and complete an MFA challenge in the same session before clicking Submit.",
+        "evidence": "verified_from_docs",
+        "source_url": "https://learn.microsoft.com/en-us/entra/identity-platform/troubleshoot-publisher-verification"
+      }
+    ],
+    "blockers": [
+      {
+        "issue": "Publisher verification not completing or badge not appearing after submission",
+        "how_to_resolve": "Review the documented requirements (verified MCPP PGA, publisher domain set and matching, dual roles, MFA in session). Check the result via Microsoft Graph: GET the application and inspect the verifiedPublisher property, or POST /applications/{id}/setVerifiedPublisher. Note the MCPP/Partner Center account verification itself is documented to take 3–5 business days; if it exceeds that, escalate to Partner Center support.",
+        "escalation": "Open a support ticket in Partner Center; follow https://learn.microsoft.com/en-us/entra/identity-platform/troubleshoot-publisher-verification (error reference) and https://learn.microsoft.com/en-us/partner-center/enroll/understand-the-verification-process",
+        "evidence": "verified_from_docs",
+        "source_url": "https://learn.microsoft.com/en-us/entra/identity-platform/troubleshoot-publisher-verification"
+      },
+      {
+        "issue": "Partner One ID not recognized / 'MPN ID doesn't exist' errors (MPNAccountNotFoundOrNoAccess, MPNGlobalAccountNotFound)",
+        "how_to_resolve": "Use the Partner ID of type PartnerGlobal (not a Partner Location Account). Confirm the MCPP account's Legal business profile / Partner info verification status is 'authorized' or 'success', confirm the tenant where the app is registered is associated with the CPP account, and confirm the signed-in user holds an eligible Partner Center role (CPP Admin or Accounts Admin).",
+        "escalation": "Partner Center support; official error reference and remediation steps at https://learn.microsoft.com/en-us/entra/identity-platform/troubleshoot-publisher-verification",
+        "evidence": "verified_from_docs",
+        "source_url": "https://learn.microsoft.com/en-us/entra/identity-platform/troubleshoot-publisher-verification"
+      },
+      {
+        "issue": "Redirect URI validation error when adding Composio callback",
+        "how_to_resolve": "Ensure URI is exactly https://backend.composio.dev/api/v3/toolkits/auth/callback (HTTPS, no trailing-slash ambiguity, ≤256 chars). Check total URI count against the limit (100 when personal Microsoft accounts are supported, 256 for work/school-only).",
+        "escalation": "Review redirect URI rules at https://learn.microsoft.com/en-us/entra/identity-platform/reply-url",
+        "evidence": "reported",
+        "source_url": ""
+      }
+    ]
+  },
+  "sources": [
+    {
+      "url": "https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app",
+      "title": "How to register an app in Microsoft Entra ID",
+      "what_it_supports": "Registration steps, Application Developer minimum role, supported account types table, User.Read default permission, new apps hidden from users by default"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/graph/auth-register-app-v2",
+      "title": "Register an application with the Microsoft identity platform (Microsoft Graph docs)",
+      "what_it_supports": "Account-type option wording, platform configuration (Web vs SPA), client secret steps, 24-month maximum secret lifetime and <12 months recommendation, certificates recommended, secret shown once"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/entra/identity-platform/reply-url",
+      "title": "Redirect URI (reply URL) best practices and limitations",
+      "what_it_supports": "HTTPS-only rule with localhost exception, 100 vs 256 URI limits by sign-in audience, 256-char limit, special characters/IDN restrictions, wildcard rules, query-parameter rule, application-object vs service-principal, localhost port matching, [::1] unsupported"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow",
+      "title": "Microsoft identity platform and OAuth 2.0 authorization code flow",
+      "what_it_supports": "Authorize/token endpoints, PKCE required for SPAs and recommended for all, redirect_uri exact match, offline_access for refresh tokens, authorization codes ~1 minute, public clients must not use secrets, spa redirect type with CORS, 24-hour SPA refresh-token expiry"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/entra/identity-platform/v2-protocols-oidc",
+      "title": "OpenID Connect on the Microsoft identity platform",
+      "what_it_supports": "Endpoint table (authorize/token/userinfo/jwks/logout), {tenant} values common/organizations/consumers/tenant-ID and their meanings, discovery document URL"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/entra/identity-platform/scopes-oidc",
+      "title": "Scopes and permissions in the Microsoft identity platform",
+      "what_it_supports": "Admin-restricted permissions (User.Read.All, Group.Read.All, Directory.ReadWrite.All), offline_access requirement for refresh tokens and 90-day refresh token validity, .default scope"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/entra/identity-platform/permissions-consent-overview",
+      "title": "Overview of permissions and consent in the Microsoft identity platform",
+      "what_it_supports": "Delegated vs application permissions, who can consent (only admin for application permissions), user vs admin consent"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/entra/identity-platform/v2-admin-consent",
+      "title": "Microsoft identity platform admin consent protocols",
+      "what_it_supports": "Admin consent endpoint https://login.microsoftonline.com/{tenant}/v2.0/adminconsent, parameters, do-not-use-common note, admin_consent=True response"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/entra/identity/enterprise-apps/grant-admin-consent",
+      "title": "Grant tenant-wide admin consent to an application",
+      "what_it_supports": "Roles that can grant tenant-wide admin consent: Privileged Role Administrator (any API incl. Graph app roles); Cloud Application Administrator, AI Administrator, Application Administrator (except Graph application permissions); portal path and URL construction"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/entra/identity-platform/publisher-verification-overview",
+      "title": "Publisher verification overview",
+      "what_it_supports": "Optional and free, MCPP/PGA Partner One ID requirement (no location IDs), work/school registration only, publisher domain rules (not *.onmicrosoft.com), dual roles, MFA, 'verified in minutes', badge on consent prompt, unverified-publisher warning for multitenant apps, B2C/national cloud not supported"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/entra/identity-platform/mark-app-as-publisher-verified",
+      "title": "Mark an app as publisher verified",
+      "what_it_supports": "Submission steps (Branding & properties → Add Partner ID), 'may take a few minutes' processing, badge replication 'may take some time', roles and MFA requirements"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/entra/identity-platform/troubleshoot-publisher-verification",
+      "title": "Troubleshoot publisher verification",
+      "what_it_supports": "Error reference (MPNAccountNotFoundOrNoAccess, MPNGlobalAccountNotFound, B2CTenantNotAllowed, MSANotSupported, NoPublisherDomainOnApplication, PublisherDomainMismatch, InteractionRequired), MFA-must-be-in-session rule, Graph API setVerifiedPublisher"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/entra/identity-platform/application-consent-experience",
+      "title": "Consent experience for applications in Microsoft Entra ID",
+      "what_it_supports": "Verified publisher badge and 'Unverified' display on consent prompts, tenant-wide consent checkbox limited to Privileged Role Administrator, SPA explicit-consent note"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/entra/identity-platform/access-tokens",
+      "title": "Access tokens in the Microsoft identity platform",
+      "what_it_supports": "Default access token lifetime variable 60–90 minutes (75 min average), CAE and sign-in frequency effects"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/entra/identity-platform/refresh-tokens",
+      "title": "Refresh tokens in the Microsoft identity platform",
+      "what_it_supports": "Default refresh token lifetimes (90 days; 24 hours for SPAs), rotation on every use, revocation conditions (password changes, admin/user revocation, single sign-out)"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/entra/identity-platform/howto-create-service-principal-portal",
+      "title": "Register a Microsoft Entra app and create a service principal",
+      "what_it_supports": "Portal registration steps, client secret creation and shown-once behavior, certificate as recommended alternative, Cloud Application Administrator sign-in requirement for that walkthrough"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/partner-center/enroll/understand-the-verification-process",
+      "title": "Understand the verification process in Partner Center",
+      "what_it_supports": "'In most cases, the process takes three to five business days' — the documented timeline belongs to Partner Center/MCPP account verification (prerequisite), not the app publisher-verification step"
+    }
+  ],
+  "unverified": [
+    "Exact hands-on time per step (portal pacing is not documented; 15–30 min total is a user estimate)",
+    "Whether Composio's managed auth will support Microsoft Entra ID in future catalog updates (non-Microsoft product; not verifiable from official Microsoft docs)",
+    "Whether single-tenant apps can display the Verified Publisher badge — current official docs say publisher verification is 'primarily' for multitenant apps but do not explicitly state single-tenant badge behavior (the draft's absolute claim is community-reported)",
+    "Tenant-specific impact of Conditional Access policies on OAuth flows for particular tenants (docs cover CAE, sign-in frequency, and revocation conditions generically; per-tenant impact varies)",
+    "Whether Global Administrator remains eligible to grant tenant-wide admin consent (not listed on the current 'Grant tenant-wide admin consent' page, which lists Privileged Role Administrator, Cloud Application Administrator, AI Administrator, Application Administrator, and custom roles)",
+    "Exact portal wording of supported-account-type options (the Entra quickstart and Graph docs use different labels; portal text may vary by release)"
+  ]
+}

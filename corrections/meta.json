@@ -1,0 +1,341 @@
+{
+  "guide": {
+    "summary": "Create a Meta OAuth app via the Meta Developer Dashboard to obtain App ID and App Secret for Facebook Login, Instagram, WhatsApp, or other Meta APIs. Requires a Facebook account, Meta Developer registration, and App Review (plus Business Verification for Advanced Access) for production permissions. Long-lived user access tokens last about 60 days and can be refreshed while the user stays active; short-lived tokens last 1-2 hours.",
+    "evidence": "verified_from_docs",
+    "source_url": "https://developers.facebook.com/docs/facebook-login/guides/access-tokens/",
+    "prerequisites": [
+      {
+        "item": "Facebook account",
+        "detail": "Personal Facebook account to sign in to Meta for Developers.",
+        "blocking": true,
+        "evidence": "verified_from_docs",
+        "source_url": "https://developers.facebook.com/docs/development/create-an-app/"
+      },
+      {
+        "item": "Meta Developer account registration",
+        "detail": "Must accept developer terms and register as a developer at developers.facebook.com.",
+        "blocking": true,
+        "evidence": "reported",
+        "source_url": "https://developers.facebook.com/docs/development/create-an-app/"
+      },
+      {
+        "item": "Business portfolio (required for apps accessing data you don't own; optional otherwise)",
+        "detail": "If your app will access data that you don't own or manage, you must connect a business portfolio; this can be done anytime during development. Business Verification on that portfolio is required to get Advanced Access to permissions.",
+        "blocking": false,
+        "evidence": "verified_from_docs",
+        "source_url": "https://developers.facebook.com/docs/development/release/business-verification"
+      },
+      {
+        "item": "HTTPS redirect URI(s)",
+        "detail": "One or more Valid OAuth Redirect URIs entered in Facebook Login > Settings. HTTPS is confirmed for JavaScript SDK authentication actions and for data deletion callbacks; Meta's manual-flow doc requires the redirect_uri to be registered in the dashboard and identical at the token-exchange step but does not explicitly state an HTTPS-only rule for redirect URIs.",
+        "blocking": true,
+        "evidence": "verified_from_docs",
+        "source_url": "https://developers.facebook.com/docs/facebook-login/guides/advanced/manual-flow"
+      },
+      {
+        "item": "Privacy Policy URL",
+        "detail": "The URL presented to app users in Meta's authentication interfaces; required for App Review submission and must be publicly accessible. Must also explain how users can request deletion of their data.",
+        "blocking": true,
+        "evidence": "verified_from_docs",
+        "source_url": "https://developers.facebook.com/documentation/resp-plat-initiatives/appreview/tutorial"
+      },
+      {
+        "item": "App icon (1024x1024)",
+        "detail": "A compliant 1024x1024 icon uploaded in Settings > Basic, containing no Meta trademarks or logos. Required for App Review.",
+        "blocking": true,
+        "evidence": "verified_from_docs",
+        "source_url": "https://developers.facebook.com/documentation/resp-plat-initiatives/appreview/tutorial"
+      },
+      {
+        "item": "Data deletion callback URL or data deletion instructions URL",
+        "detail": "Apps must specify either a Data Deletion Request URL callback (HTTPS, returns a status URL and confirmation code) or a data deletion instructions URL in Basic Settings; the privacy policy must explain how to request deletion. Non-compliance can result in the callback being removed or the app being disabled.",
+        "blocking": true,
+        "evidence": "verified_from_docs",
+        "source_url": "https://developers.facebook.com/docs/development/create-an-app/app-dashboard/data-deletion-callback/"
+      },
+      {
+        "item": "Terms of Service URL",
+        "detail": "Not listed as a required App Review submission item in the official submission guide; commonly configured but treat as optional rather than blocking.",
+        "blocking": false,
+        "evidence": "verified_from_docs",
+        "source_url": "https://developers.facebook.com/documentation/resp-plat-initiatives/appreview/tutorial"
+      }
+    ],
+    "steps": [
+      {
+        "n": 1,
+        "title": "Sign in and register as a Meta Developer",
+        "where": "https://developers.facebook.com",
+        "action": "Log in with your Facebook account, accept the Developer Terms, and complete the developer registration flow.",
+        "duration": "5 minutes",
+        "agent_automatable": false,
+        "human_because": "Requires personal Facebook login and legal acceptance of Meta Platform Terms.",
+        "nuances": "If you already have a developer account, this step is skipped.",
+        "evidence": "reported",
+        "source_url": "https://developers.facebook.com/docs/development/create-an-app/"
+      },
+      {
+        "n": 2,
+        "title": "Create a new app in the Meta Developer Dashboard",
+        "where": "https://developers.facebook.com/apps/creation/",
+        "action": "Start creation, enter your app's name and a contact email, and click Next. The modern flow is use-case based: you select one or more use cases (e.g., 'Authenticate and request data from users with Facebook Login') rather than picking a legacy app type.",
+        "duration": "5 minutes",
+        "agent_automatable": false,
+        "human_because": "Requires interactive console navigation and naming decisions.",
+        "nuances": "Use cases auto-add required permissions, features, and products; required permissions cannot be removed, and use cases cannot be removed after creation. 'Other' is available for unlisted cases. Apps not connected to a Meta Verified Business Account are limited to 15 apps per person.",
+        "evidence": "verified_from_docs",
+        "source_url": "https://developers.facebook.com/docs/development/create-an-app/"
+      },
+      {
+        "n": 3,
+        "title": "Connect a Business Portfolio (optional or required depending on data access)",
+        "where": "Meta Developer Dashboard -> Create App flow -> Business step",
+        "action": "Choose a verified business portfolio, an unverified one, 'I don't want to connect a business portfolio yet', or create a new one (with the option to submit for verification now or later).",
+        "duration": "5 minutes",
+        "agent_automatable": false,
+        "human_because": "Business Portfolio selection requires access to Business Manager.",
+        "nuances": "If your app will access data you don't own or manage, a business portfolio is required. Apps requesting Advanced Access for permissions must be connected to a business that has completed Business Verification (as of February 1, 2023, you 'might' need it).",
+        "evidence": "verified_from_docs",
+        "source_url": "https://developers.facebook.com/docs/development/create-an-app/"
+      },
+      {
+        "n": 4,
+        "title": "Configure Valid OAuth Redirect URIs",
+        "where": "App Dashboard -> Facebook Login -> Settings",
+        "action": "Add each redirect URI to the 'Valid OAuth Redirect URIs' list and save changes.",
+        "duration": "5 minutes",
+        "agent_automatable": false,
+        "human_because": "Console form entry; exact URI matching is critical.",
+        "nuances": "The redirect_uri used to open the Login Dialog must be registered here and must be exactly the same as the redirect_uri passed in the server-side token-exchange call. Always pass a 'state' parameter (listed among the required parameters of the manual flow) for CSRF protection. Desktop webview apps must use the fixed redirect https://www.facebook.com/connect/login_success.html.",
+        "evidence": "verified_from_docs",
+        "source_url": "https://developers.facebook.com/docs/facebook-login/guides/advanced/manual-flow"
+      },
+      {
+        "n": 5,
+        "title": "Copy App ID (Client ID) and App Secret (Client Secret)",
+        "where": "App Dashboard -> Settings -> Basic",
+        "action": "Reveal and copy the App ID and App Secret; store securely.",
+        "duration": "2 minutes",
+        "agent_automatable": false,
+        "human_because": "Secrets must be handled by a human or secure secret manager.",
+        "nuances": "App Secret can be reset if compromised. While in Settings > Basic, also set the Privacy Policy URL, app icon, category, and data deletion URL/callback required later for App Review.",
+        "evidence": "verified_from_docs",
+        "source_url": "https://developers.facebook.com/documentation/resp-plat-initiatives/appreview/tutorial"
+      },
+      {
+        "n": 6,
+        "title": "Configure permissions via Use Cases",
+        "where": "App Dashboard -> Use Cases -> Customize",
+        "action": "For each selected use case, click 'Customize' and add the required permissions (scopes). Request Advanced Access and submit for App Review if the permission needs to work for users without an app role.",
+        "duration": "10-20 minutes",
+        "agent_automatable": false,
+        "human_because": "Permission justification and review submission require human description and screen recordings.",
+        "nuances": "public_profile is auto-added as a required, non-removable permission by relevant use cases. All Business, Consumer, and Gaming apps are automatically approved for Standard Access to all permissions, but Standard Access only works for users with a role on the app. Advanced Access must be approved per-permission through App Review and requires Business Verification. New Consumer apps get automatic Advanced Access for email and public_profile (set to Standard by default and must be switched manually, and only once the app is Live).",
+        "evidence": "verified_from_docs",
+        "source_url": "https://developers.facebook.com/docs/graph-api/overview/access-levels"
+      },
+      {
+        "n": 7,
+        "title": "Submit App Review for Advanced Access",
+        "where": "App Dashboard -> App Review / Permissions and Features (and Publish > Go live flow)",
+        "action": "For each permission needing Advanced Access, provide a use-case description, a high-resolution (1080+) screen recording showing the permission being granted and used, valid test credentials or codes for reviewers, and complete the data-handling sections. Ensure the Privacy Policy URL, app icon, and data deletion URL/callback are set in Settings > Basic. Submit for review.",
+        "duration": "30-60 minutes preparation; review wait not officially documented (reported a few days to several weeks)",
+        "agent_automatable": false,
+        "human_because": "Legal/compliance content, screen recordings, and test credentials require human effort.",
+        "nuances": "Any requested permission missing a screen recording will not be approved; if Meta cannot access your app to test it, the entire submission is rejected. Reviewers will not listen to audio in recordings. Make at least one successful API call per requested permission within 30 days of submitting. Keep the app in Development mode during review.",
+        "evidence": "verified_from_docs",
+        "source_url": "https://developers.facebook.com/documentation/resp-plat-initiatives/appreview/tutorial"
+      },
+      {
+        "n": 8,
+        "title": "Switch app to Live mode after review approval (Consumer/Gaming apps)",
+        "where": "App Dashboard -> Publish > Go live (App Mode toggle)",
+        "action": "Toggle the app from Development to Live once the required permissions are approved.",
+        "duration": "1 minute",
+        "agent_automatable": false,
+        "human_because": "Final production gate; human confirmation.",
+        "nuances": "In Development mode only people with a role on the app can use it. Live mode lets users without a role request App Review approved permissions; unapproved permissions become inactive for them. Important: Business apps do not have app modes at all and rely exclusively on access levels, so for Business-type apps there is no Development/Live toggle and role-less access is governed purely by Standard vs Advanced Access.",
+        "evidence": "verified_from_docs",
+        "source_url": "https://developers.facebook.com/docs/development/release/"
+      },
+      {
+        "n": 9,
+        "title": "Implement long-lived token exchange and renewal",
+        "where": "Application code",
+        "action": "Exchange the short-lived token from web login for a long-lived token via a server-side call to GET /oauth/access_token with grant_type=fb_exchange_token (client_id, client_secret, fb_exchange_token). Design the integration to handle ~60-day long-lived token expiry.",
+        "duration": "Ongoing development effort",
+        "agent_automatable": true,
+        "human_because": "",
+        "nuances": "Long-lived tokens generally last about 60 days but Meta warns not to depend on these lifetimes; they may change without warning or expire early. Long-lived tokens are refreshable: native mobile SDK tokens are refreshed once per day when the user makes a request (if the user has used the app within the last 90 days). An expired token cannot be exchanged for a long-lived one; the user must re-run the login flow. Long-lived Page tokens do not expire on a schedule, and Marketing API Standard-access tokens and Business Manager System User tokens do not expire based on time.",
+        "evidence": "verified_from_docs",
+        "source_url": "https://developers.facebook.com/docs/facebook-login/guides/access-tokens/get-long-lived"
+      }
+    ],
+    "gotchas": [
+      {
+        "title": "Redirect URI exact match and state parameter required",
+        "why_it_matters": "The redirect_uri must be registered in 'Valid OAuth Redirect URIs' and must be exactly the same on both the Login Dialog request and the server-side token-exchange call; any mismatch causes authorization failures. The manual flow lists state among required parameters for CSRF protection.",
+        "how_to_handle": "Copy the exact URI from your application config into the Valid OAuth Redirect URIs list; generate and validate a state parameter on every authorization request. Desktop webviews must use https://www.facebook.com/connect/login_success.html.",
+        "evidence": "verified_from_docs",
+        "source_url": "https://developers.facebook.com/docs/facebook-login/guides/advanced/manual-flow"
+      },
+      {
+        "title": "User access tokens: ~60-day long-lived expiry, but refreshable",
+        "why_it_matters": "Short-lived web-login tokens last about 1-2 hours; long-lived tokens about 60 days. An expired token cannot be exchanged, so the user must re-run the login flow. Meta explicitly warns these lifetimes may change without warning.",
+        "how_to_handle": "Exchange for long-lived tokens server-side, store expiry timestamps, and renew while the user is active (mobile SDK tokens auto-refresh daily if used within 90 days). Use app access tokens or System User tokens for server-to-server calls where appropriate.",
+        "evidence": "verified_from_docs",
+        "source_url": "https://developers.facebook.com/docs/facebook-login/guides/access-tokens/"
+      },
+      {
+        "title": "Development Mode restricts users to app role holders - and Business apps have no modes",
+        "why_it_matters": "Before going Live, only people with a role on the app can use it. However, Business apps do not have app modes at all; their role-less access is governed exclusively by Standard vs Advanced Access, so the 'toggle to Live' step may not apply to your app.",
+        "how_to_handle": "Add testers/developers in App Dashboard > Roles during development; check whether your app is a Business app (use access levels) or Consumer/Gaming app (use the Go live toggle).",
+        "evidence": "verified_from_docs",
+        "source_url": "https://developers.facebook.com/docs/development/release/"
+      },
+      {
+        "title": "Standard Access vs Advanced Access",
+        "why_it_matters": "Every Business, Consumer, and Gaming app is automatically approved for Standard Access to all permissions, but Standard Access only works for users with a role on the app. Reaching real users requires Advanced Access, which is approved per-permission through App Review and requires Business Verification.",
+        "how_to_handle": "Test with role-holders under Standard Access, then submit App Review per permission for Advanced Access before launch.",
+        "evidence": "verified_from_docs",
+        "source_url": "https://developers.facebook.com/docs/graph-api/overview/access-levels"
+      },
+      {
+        "title": "App Review requires screen recordings, app icon, and privacy policy - not a Terms of Service URL",
+        "why_it_matters": "Submissions need a 1024x1024 app icon, a public Privacy Policy URL, and high-resolution screen recordings per permission; missing recordings mean those permissions are not approved, and an inaccessible app gets the whole submission rejected. The official submission guide does not list a Terms of Service URL as required.",
+        "how_to_handle": "Record 1080p+ footage of each permission being granted and used, provide valid test credentials, and make at least one successful API call per permission within 30 days of submitting.",
+        "evidence": "verified_from_docs",
+        "source_url": "https://developers.facebook.com/documentation/resp-plat-initiatives/appreview/tutorial"
+      },
+      {
+        "title": "Data deletion callback or instructions URL required",
+        "why_it_matters": "Apps must specify either a Data Deletion Request URL callback (HTTPS, returning a confirmation code and status URL) or a data deletion instructions URL; the privacy policy must also explain how users request deletion. Non-compliance can result in the callback being removed or the app disabled.",
+        "how_to_handle": "Implement the deletion callback per the official spec and set it in Settings > Basic before launch.",
+        "evidence": "verified_from_docs",
+        "source_url": "https://developers.facebook.com/docs/development/create-an-app/app-dashboard/data-deletion-callback/"
+      },
+      {
+        "title": "Business Verification is tied to Advanced Access, not just specific APIs",
+        "why_it_matters": "Apps requesting Advanced Access for permissions (and apps letting other Businesses access their own data) must be connected to a business that has completed Business Verification; until then those permissions/features stay inactive for role-less users. Verification is done from App Dashboard Settings > Basic > Verification (Start Verification), with Business Admin rights required.",
+        "how_to_handle": "Connect the app to a verified business portfolio, or complete verification from the App Dashboard flow, before requesting Advanced Access.",
+        "evidence": "verified_from_docs",
+        "source_url": "https://developers.facebook.com/docs/development/release/business-verification"
+      },
+      {
+        "title": "Use cases are locked in at creation",
+        "why_it_matters": "Use cases auto-add permissions, features, and products (e.g., 'Manage everything on your Page' requires business_management, pages_show_list, public_profile); required permissions cannot be removed and use cases cannot be removed after creation, so wrong choices constrain your app later.",
+        "how_to_handle": "Pick only the use cases you actually need at creation; add compatible ones later. public_profile cannot be removed once added by a use case.",
+        "evidence": "verified_from_docs",
+        "source_url": "https://developers.facebook.com/docs/development/create-an-app/"
+      }
+    ],
+    "blockers": [
+      {
+        "issue": "App Review rejection due to inaccessible app, missing screen recordings, or incomplete app",
+        "how_to_resolve": "Review the rejection reason; record 1080p+ screen recordings showing each permission being granted and used, make sure the app is complete and accessible with valid test credentials, and make at least one successful API call per requested permission within 30 days of submitting.",
+        "escalation": "Use the App Review dashboard or contact Meta Developer Support via the Help Center.",
+        "evidence": "verified_from_docs",
+        "source_url": "https://developers.facebook.com/documentation/resp-plat-initiatives/appreview/tutorial"
+      },
+      {
+        "issue": "Business Verification stuck or rejected",
+        "how_to_resolve": "Start verification from App Dashboard Settings > Basic > Verification; an app Admin can connect the business but a Business Admin must complete verification with documents matching the business details.",
+        "escalation": "Open a Business Verification support request via Business Manager / Meta Business Help Center.",
+        "evidence": "verified_from_docs",
+        "source_url": "https://developers.facebook.com/docs/development/release/business-verification"
+      },
+      {
+        "issue": "Redirect URI validation error in production",
+        "how_to_resolve": "Verify the exact URI in the Valid OAuth Redirect URIs list matches the redirect_uri in both the Login Dialog request and the token-exchange call; check for environment-specific differences (staging vs prod).",
+        "escalation": "If the console shows the URI but errors persist, file a bug via Meta Developer Support.",
+        "evidence": "verified_from_docs",
+        "source_url": "https://developers.facebook.com/docs/facebook-login/guides/advanced/manual-flow"
+      }
+    ],
+    "composio_next": {
+      "managed_note": "Meta (Facebook) OAuth is not currently a managed auth config in the Composio catalog. Custom auth config required.",
+      "redirect_uri_to_register": "https://backend.composio.dev/api/v3/toolkits/auth/callback",
+      "auth_config_fields": [
+        "client_id",
+        "client_secret",
+        "auth_url",
+        "token_url",
+        "scopes",
+        "redirect_uri"
+      ],
+      "auth_config_snippet": "from composio import Composio\n\ncomposio = Composio()\nauth_config = composio.auth_configs.create(\n    name=\"meta-facebook-oauth\",\n    options={\n        \"type\": \"use_custom_auth\",\n        \"auth_scheme\": \"OAUTH2\",\n        \"credentials\": {\n            \"client_id\": \"{{META_APP_ID}}\",\n            \"client_secret\": \"{{META_APP_SECRET}}\",\n            \"auth_url\": \"https://www.facebook.com/v26.0/dialog/oauth\",\n            \"token_url\": \"https://graph.facebook.com/v26.0/oauth/access_token\",\n            \"scopes\": [\"public_profile\", \"email\"],\n            \"redirect_uri\": \"https://backend.composio.dev/api/v3/toolkits/auth/callback\"\n        }\n    }\n)",
+      "mcp_note": "When using this auth config with MCP, ensure the redirect_uri is registered in the Meta app's Valid OAuth Redirect URIs and send a state parameter. Long-lived user tokens last about 60 days and are refreshable while the user stays active; Graph API versions are versioned, so pin the version your app was built against and update deliberately."
+    }
+  },
+  "sources": [
+    {
+      "url": "https://developers.facebook.com/docs/development/create-an-app/",
+      "title": "Meta for Developers: Create an App",
+      "what_it_supports": "App creation flow (name, contact email), use-case-based app model, business portfolio step, permissions auto-added by use cases, 15-app limit, App Review trigger for role-less users."
+    },
+    {
+      "url": "https://developers.facebook.com/docs/facebook-login/guides/advanced/manual-flow",
+      "title": "Meta for Developers: Facebook Login Manual Flow",
+      "what_it_supports": "Authorization dialog URL, required parameters including state, Valid OAuth Redirect URIs in the dashboard, redirect_uri must match at token exchange, token exchange endpoint (server-to-server), debug_token validation."
+    },
+    {
+      "url": "https://developers.facebook.com/docs/development/release/",
+      "title": "Meta for Developers: App Mode / Release",
+      "what_it_supports": "Development vs Live mode, who can use apps before publishing, Go live flow, Business Verification trigger for Advanced Access, Business apps have no app modes."
+    },
+    {
+      "url": "https://developers.facebook.com/docs/graph-api/overview/access-levels",
+      "title": "Meta for Developers: Access Levels (Standard vs Advanced)",
+      "what_it_supports": "Standard Access granted automatically to all permissions for role-holders only; Advanced Access per-permission via App Review; Business Verification required for Advanced Access; automatic Advanced Access for email and public_profile on new Consumer apps; Data Use Checkup."
+    },
+    {
+      "url": "https://developers.facebook.com/docs/development/release/business-verification",
+      "title": "Meta for Developers: Business Verification",
+      "what_it_supports": "Which apps need Business Verification (Advanced Access), verification via App Dashboard Settings > Basic > Verification, Business Admin requirement, February 1, 2023 policy note."
+    },
+    {
+      "url": "https://developers.facebook.com/documentation/resp-plat-initiatives/appreview/tutorial",
+      "title": "Meta for Developers: App Review Submission Guide",
+      "what_it_supports": "Required submission materials: 1024x1024 app icon, Privacy Policy URL, app category/purpose, 1080p+ screen recordings per permission, reviewer access/test credentials, API call within 30 days, stay in Development mode during review."
+    },
+    {
+      "url": "https://developers.facebook.com/docs/resp-plat-initiatives/app-review/",
+      "title": "Meta for Developers: App Review Overview",
+      "what_it_supports": "When App Review is required (role-less users), Meta must be able to test the app or the whole submission is rejected, approval scope semantics."
+    },
+    {
+      "url": "https://developers.facebook.com/docs/facebook-login/guides/access-tokens/",
+      "title": "Meta for Developers: Access Tokens",
+      "what_it_supports": "Short-lived tokens ~1-2 hours, long-lived ~60 days, lifetimes may change without warning, no refresh tokens documented, Marketing API Standard-access tokens do not expire on time."
+    },
+    {
+      "url": "https://developers.facebook.com/docs/facebook-login/guides/access-tokens/get-long-lived",
+      "title": "Meta for Developers: Get Long-Lived Access Tokens",
+      "what_it_supports": "fb_exchange_token grant for long-lived tokens, ~60-day expiry, mobile SDK auto-refresh (daily, 90-day window), expired tokens cannot be exchanged, long-lived Page tokens do not expire on a schedule."
+    },
+    {
+      "url": "https://developers.facebook.com/docs/development/create-an-app/app-dashboard/data-deletion-callback/",
+      "title": "Meta for Developers: Data Deletion Callback",
+      "what_it_supports": "Requirement to provide a data deletion callback URL or instructions URL, HTTPS requirement, JSON response shape (confirmation_code + url), privacy policy must explain deletion, consequences of non-compliance."
+    },
+    {
+      "url": "https://developers.facebook.com/docs/facebook-login/web",
+      "title": "Meta for Developers: Facebook Login for Web",
+      "what_it_supports": "Valid OAuth Redirect URIs field, Allowed Domains for JavaScript SDK, HTTPS support statement for JS SDK authentication actions."
+    },
+    {
+      "url": "https://developers.facebook.com/docs/app-review/submission-guide/screen-recordings",
+      "title": "Meta for Developers: Screen Recordings (App Review)",
+      "what_it_supports": "Screen recordings must demonstrate each requested permission and feature; located via official search (title matches the submission-guide requirement)."
+    }
+  ],
+  "unverified": [
+    "App Review timeline (reported a few days to several weeks; official docs do not state a duration)",
+    "Meta Developer account registration flow details (accepting Developer Terms is standard but not step-by-step documented in fetched pages)",
+    "Whether an HTTPS-only rule applies to all Valid OAuth Redirect URIs (official manual-flow doc does not state it explicitly; HTTPS is confirmed only for JS SDK auth actions and data deletion callbacks)",
+    "Whether general app access tokens truly never expire (docs only state Marketing API Standard-access and System User tokens do not expire based on time)",
+    "Composio managed auth config availability (catalog not found)",
+    "Current rate limits / caps for Meta APIs (not checked)",
+    "Exact current Graph API version at reading time (v26.0 shown in fetched manual-flow docs; versions rotate quarterly)"
+  ]
+}
