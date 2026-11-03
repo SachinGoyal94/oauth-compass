@@ -1,0 +1,23 @@
+# secrets — never commit or ship
+.env
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.crewai/
+
+# editor/os
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# build artifacts
+dist/
+build/
+*.egg-info/
+
+# zcode session files
+.zcode/
