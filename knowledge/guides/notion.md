@@ -1,0 +1,460 @@
+---
+type: oauth_guide
+okf_version: '0.2'
+resource: notion
+title: Notion OAuth App Setup Guide
+tags:
+- api
+- integration
+- notion
+- oauth
+- oauth2
+status: stable
+stale_after: '2027-05-02'
+generated:
+  by: agent:crewai+nim:nvidia/nemotron-3-ultra-550b-a55b
+  at: '2026-11-03T17:29:42.627626Z'
+verified:
+  by: human:verification-pass
+  at: '2026-11-03T18:02:48.179886Z'
+chatbot:
+  visible: true
+  priority: primary
+badge: library
+last_checked: '2026-11-03'
+unverified:
+- Exact access token TTL (not documented; token response includes refresh_token but no expiry fields)
+- Exact refresh token TTL (not documented)
+- HTTPS/localhost requirements for redirect URIs (not stated in Notion's docs; standard OAuth guidance
+  applies)
+- Exact-match semantics for redirect URIs (trailing slash, query params, case) (not documented by Notion;
+  standard OAuth practice)
+- Whether the OAuth client secret can be regenerated after creation (not documented; secret is retrievable
+  from the Configuration tab)
+- PKCE for the REST API OAuth flow (no code_challenge parameter documented; PKCE documented only for Notion
+  MCP clients)
+- Maximum redirect URIs per app (not specified; managed under OAuth Domain & URIs)
+- 'Detailed Marketplace rejection criteria (official FAQ lists general categories only: brand/trademark,
+  quality, baseline criteria)'
+- Integration ownership transfer process (not documented)
+- Whether accepting Notion API Terms of Service/Developer Policy is a required portal step (not documented
+  in the guides consulted)
+sources:
+- url: https://developers.notion.com/guides/get-started/authorization
+  title: Notion Docs — Authorization
+  what_it_supports: 'OAuth flow (authorize URL params: client_id, redirect_uri, response_type=code, owner=user,
+    state — no scope/PKCE param), HTTP Basic auth at https://api.notion.com/v1/oauth/token, full token
+    response incl. refresh_token, refresh rotation (new access + new refresh token), template URL in Configuration
+    tab, ''Allow access'' consent with page picker, secrets in Configuration tab, and ''Marketplace submission
+    or review is not required''.'
+- url: https://developers.notion.com/guides/get-started/public-connections
+  title: Notion Docs — Public connections
+  what_it_supports: Creation flow (Build → Public connections → Create new connection), form fields (name
+    + development workspace, redirect URI(s), installation scope, capabilities), immutable installation
+    scope with Marketplace eligibility ('Any workspace' eligible, 'Selected workspaces only' not), client
+    ID/secret retrieved from Configuration tab, per-user OAuth consent.
+- url: https://developers.notion.com/guides/get-started/marketplace-listing
+  title: Notion Docs — List on the Marketplace
+  what_it_supports: Marketplace listing is optional and separate from building; only 'Any workspace' public
+    connections are eligible; Listings section workflow; official review timeline of 5-10 business days;
+    general rejection reasons (brand/trademark, quality, baseline criteria).
+- url: https://developers.notion.com/guides/get-started/overview
+  title: Notion Docs — Overview (connection types)
+  what_it_supports: Four connection types (personal access token, internal connection, OAuth integration,
+    public integration); 'OAuth integrations and public integrations use the same OAuth authorization
+    flow'; Marketplace listing 'Optional, subject to review'; capabilities chosen per connection.
+- url: https://developers.notion.com/reference/capabilities
+  title: Notion Docs — Connection capabilities
+  what_it_supports: 'Exact capability list: read/update/insert content, read/insert comments, agent capabilities,
+    user info levels (none / without email / with email); NO delete-content capability; capabilities changeable
+    in portal but public users must re-authenticate; minimum-capability best practice.'
+- url: https://developers.notion.com/reference/request-limits
+  title: Notion Docs — Request limits
+  what_it_supports: 'Current rate limits: 180 requests/60s window (avg 3/s) on all plans except Business/Enterprise
+    at 600/60s (avg 10/s); budget spendable at any pace; separate shared per-workspace limit; ~3 req/s
+    per connection for data source queries; Retry-After header and additional_data.retry_after documented.'
+- url: https://developers.notion.com/reference/create-a-token
+  title: Notion Docs — Create a token (POST /v1/oauth/token)
+  what_it_supports: 'OpenAPI spec: basicAuth security scheme, grant_type authorization_code/refresh_token,
+    conditional redirect_uri rules tied to ''OAuth Domain & URIs'', required response fields (access_token,
+    token_type, refresh_token, bot_id, workspace_id, owner, duplicated_template_id), Notion-Version header
+    required.'
+- url: https://developers.notion.com/reference/refresh-a-token
+  title: Notion Docs — Refresh a token
+  what_it_supports: 'Refresh endpoint semantics: ''Refreshes an access token, generating a new access
+    token and new refresh token'' via grant_type=refresh_token.'
+- url: https://developers.notion.com/guides/get-started/handling-api-keys
+  title: Notion Docs — Secure API tokens
+  what_it_supports: Credential security best practices (secret manager, no commits, environment variables),
+    /v1/oauth/* endpoints intentionally lack CORS (client secret must stay server-side), token rotation
+    guidance, exposure response steps.
+- url: https://app.notion.com/developers/connections
+  title: Notion Developer portal — Connections console
+  what_it_supports: The actual console URL where connections are created and managed, as linked from the
+    official Authorization and Public connections guides.
+- url: https://www.notion.so/my-integrations
+  title: Notion — legacy My integrations URL (redirects)
+  what_it_supports: 'Verified 307 redirect chain: notion.so/my-integrations → notion.so/developers/connections
+    → app.notion.com/developers/connections, confirming the current console location.'
+- url: https://www.notion.com/help/create-integrations-with-the-notion-api
+  title: Notion Help Center — Create integrations with the Notion API
+  what_it_supports: Workspace owners only can create connections; name (required) and optional logo at
+    creation; capability levels incl. user info with/without email; 'All newly added connections are internal
+    initially' with a documented path to convert to public.
+guide:
+  summary: Register a Notion OAuth or public connection in the Developer portal (https://app.notion.com/developers/connections)
+    to obtain an OAuth client ID and client secret. Internal connections use a static API token and have
+    no OAuth flow. No review is required to start OAuth flows; installation scope (Any workspace vs. Selected
+    workspaces only) is immutable after creation. Store all token response fields (access_token, refresh_token,
+    bot_id, workspace_id), use HTTP Basic Auth at the token endpoint, and on refresh persist the new access
+    token AND the new refresh token.
+  app_website: https://www.notion.so
+  developer_console: https://app.notion.com/developers/connections
+  oauth_docs: https://developers.notion.com/guides/get-started/authorization
+  difficulty:
+    level: 2
+    tier: Light
+    verdict: Instant registration, no approval wait; only the immutable scope choice and credential handling
+      require care. Marketplace listing is optional and takes a 5-10 business day review.
+  time:
+    hands_on: 15-30 minutes
+    approval_wait: None for OAuth; 5-10 business days if submitting an optional Marketplace listing
+    verdict: No mandatory review to start OAuth flows ('Marketplace submission or review is not required');
+      Marketplace listing is optional and Notion's official FAQ says to expect a reply within 5-10 business
+      days.
+  prerequisites:
+  - item: Notion account
+    detail: 'Workspace owner access is required: ''You are required to be a workspace owner to create
+      a connection.'''
+    blocking: true
+  - item: Developer portal access
+    detail: Sign in at https://app.notion.com/developers/connections (https://www.notion.so/my-integrations
+      redirects there).
+    blocking: true
+  - item: Redirect URI
+    detail: 'Registered under OAuth Domain & URIs in the connection settings. Notion''s docs do not publish
+      HTTPS/localhost rules for redirect URIs. For Composio: https://backend.composio.dev/api/v3/toolkits/auth/callback'
+    blocking: true
+  steps:
+  - n: 1
+    title: Open the Developer portal and sign in
+    where: https://app.notion.com/developers/connections
+    action: Navigate to the Developer portal and sign in with your Notion account.
+    duration: 1-2 minutes
+    agent_automatable: false
+    human_because: Requires interactive login to Notion.
+    nuances: The legacy https://www.notion.so/my-integrations URL redirects to this portal. Use the workspace
+      owner account that will own the connection.
+    evidence: verified_from_docs
+    source_url: https://developers.notion.com/guides/get-started/authorization
+  - n: 2
+    title: Create a new connection (OAuth/public)
+    where: Developer portal → Build → Public connections → Create new connection
+    action: Click 'Create new connection' and fill in the required fields.
+    duration: 1 minute
+    agent_automatable: false
+    human_because: UI click in provider console.
+    nuances: '''OAuth integrations and public integrations use the same OAuth authorization flow'' — they
+      differ only in installation scope. Internal connections use a static API token and have no OAuth
+      flow, so pick the OAuth/public path.'
+    evidence: verified_from_docs
+    source_url: https://developers.notion.com/guides/get-started/public-connections
+  - n: 3
+    title: Configure basic information and capabilities
+    where: Connection creation form
+    action: Fill in connection name (required) and development workspace, optionally upload a logo, and
+      select capabilities (read content, update content, insert content, etc.).
+    duration: 2-3 minutes
+    agent_automatable: false
+    human_because: Form entry in provider console.
+    nuances: The authorization prompt presents the connection's capabilities to the user. Description/categories/images
+      are separate Marketplace 'Listings' details managed after creation, not creation-form fields.
+    evidence: verified_from_docs
+    source_url: https://developers.notion.com/guides/get-started/public-connections
+  - n: 4
+    title: Choose installation scope (immutable)
+    where: Connection creation form → Installation scope
+    action: Select either 'Any workspace' or 'Selected workspaces only'. 'Installation scope is set once,
+      at creation time, and can't be changed afterward.'
+    duration: 1 minute
+    agent_automatable: false
+    human_because: Irreversible decision requiring human judgment.
+    nuances: '''Any workspace'' is Marketplace-eligible and installable by any Notion user; ''Selected
+      workspaces only'' is not Marketplace-eligible — ''If you pick Selected workspaces only and later
+      want to list on the Marketplace, create a new connection.'''
+    evidence: verified_from_docs
+    source_url: https://developers.notion.com/guides/get-started/public-connections
+  - n: 5
+    title: Add redirect URI(s)
+    where: Connection creation form → OAuth configuration (OAuth Domain & URIs)
+    action: Add one or more redirect URIs. Include https://backend.composio.dev/api/v3/toolkits/auth/callback
+      for Composio.
+    duration: 1-2 minutes
+    agent_automatable: false
+    human_because: Form entry in provider console.
+    nuances: Multiple URIs are supported. If more than one redirect URI is registered (or redirect_uri
+      was supplied in the Authorization URL), redirect_uri is REQUIRED in the token exchange; with exactly
+      one URI and no query-param redirect_uri, it is NOT allowed. HTTPS/localhost rules and exact-match/trailing-slash
+      behavior are not documented by Notion.
+    evidence: verified_from_docs
+    source_url: https://developers.notion.com/reference/create-a-token
+  - n: 6
+    title: (Optional) Add template URL
+    where: Configuration tab → Basic information → 'Notion URL for optional template'
+    action: Provide the URL of a public Notion page to offer as a template during the auth flow.
+    duration: 1 minute
+    agent_automatable: false
+    human_because: Optional form entry.
+    nuances: Configured in the Configuration tab after creation, not in the creation form. Users can duplicate
+      the template instead of selecting pages; if they do, duplicated_template_id is returned in the token
+      response.
+    evidence: verified_from_docs
+    source_url: https://developers.notion.com/guides/get-started/authorization
+  - n: 7
+    title: Retrieve credentials from the Configuration tab
+    where: Connection settings → Configuration tab
+    action: After creation, open the Configuration tab and copy the OAuth client ID and client secret;
+      store them in a secret manager or environment variables.
+    duration: 1 minute
+    agent_automatable: false
+    human_because: Credential retrieval in provider console; must be stored securely.
+    nuances: Notion's docs do NOT say the secret is shown only once — the docs say to 'access the connection's
+      secrets in the Configuration tab' after creation — but they warn these values should be protected
+      and never included in source code or version control.
+    evidence: verified_from_docs
+    source_url: https://developers.notion.com/guides/get-started/authorization
+  gotchas:
+  - title: Installation scope is immutable
+    why_it_matters: Scope is set once at creation and can't be changed. 'Selected workspaces only' connections
+      are not Marketplace-eligible; switching later means creating a new connection and re-authorizing
+      users.
+    how_to_handle: 'Decide before creating: Marketplace or any-user app → ''Any workspace''; restricted
+      internal tool → ''Selected workspaces only''.'
+    evidence: verified_from_docs
+    source_url: https://developers.notion.com/guides/get-started/public-connections
+  - title: Client Secret is retrievable, not shown-only-once
+    why_it_matters: The claim that the client secret is shown only once is not in Notion's docs; the client
+      ID and client secret can be retrieved from the Configuration tab. A documented regeneration path
+      for the OAuth client secret does not exist.
+    how_to_handle: Store in a secret manager or environment variables, never in source control; limit
+      who can read production secrets.
+    evidence: verified_from_docs
+    source_url: https://developers.notion.com/guides/get-started/authorization
+  - title: Token response contains required metadata and rotates both tokens
+    why_it_matters: API calls need bot_id, workspace_id, and refresh_token — not just access_token. Refreshing
+      'will generate a new access token and a new refresh token', so the old refresh token stops working.
+    how_to_handle: Persist the full token response JSON; on refresh, store BOTH the new access token and
+      the new refresh token.
+    evidence: verified_from_docs
+    source_url: https://developers.notion.com/guides/get-started/authorization
+  - title: Token endpoint uses HTTP Basic Auth
+    why_it_matters: The token request 'is authorized using HTTP Basic Authentication' with the colon-delimited
+      CLIENT_ID:CLIENT_SECRET pair, base64-encoded in the Authorization header; the OpenAPI spec defines
+      security as basicAuth. Requests also require the Notion-Version header.
+    how_to_handle: Implement token exchange (authorization_code and refresh_token grants) with the Basic
+      Auth header; send Notion-Version on API requests.
+    evidence: verified_from_docs
+    source_url: https://developers.notion.com/reference/create-a-token
+  - title: Capabilities replace traditional scopes (and there is no delete-content capability)
+    why_it_matters: The authorize URL takes no scope parameter — capabilities (read/update/insert content,
+      read/insert comments, user info level) are configured in the Developer portal. Changing capabilities
+      requires public users to re-authenticate. No 'delete content' capability exists.
+    how_to_handle: Configure all needed capabilities in the portal before users authorize; request the
+      minimum ('The fewer capabilities you request, the more likely a workspace admin will be able to
+      install your connection').
+    evidence: verified_from_docs
+    source_url: https://developers.notion.com/reference/capabilities
+  - title: redirect_uri in the token request is conditional
+    why_it_matters: If more than one redirect URI is registered under OAuth Domain & URIs (or redirect_uri
+      was supplied in the Authorization URL), the token request must include redirect_uri; with a single
+      URI and no query-param redirect_uri, including it is not allowed.
+    how_to_handle: Match your token-exchange code to your registered URI count. Notion does not document
+      exact-match/trailing-slash/case rules; follow standard OAuth practice and test.
+    evidence: verified_from_docs
+    source_url: https://developers.notion.com/reference/create-a-token
+  blockers:
+  - issue: Wrong installation scope chosen
+    how_to_resolve: Create a new connection with the correct scope and migrate users via re-authorization
+      ('If you pick Selected workspaces only and later want to list on the Marketplace, create a new connection.').
+    escalation: Not documented; Notion's docs only say to create a new connection.
+  - issue: Client secret lost or exposed
+    how_to_resolve: Retrieve the client ID and client secret from the Configuration tab in the Developer
+      portal; update all deployments.
+    escalation: Secret regeneration is not documented in Notion's docs; credential-security guidance covers
+      revoking/refreshing tokens but not the OAuth client secret.
+  agent_vs_human:
+    agent_can:
+    - Research Notion OAuth endpoints and parameters
+    - Prepare the list of required capabilities (no 'delete content' capability exists)
+    - Draft connection details (name, redirect URIs)
+    - Construct authorization URL with state parameter (PKCE is not documented for Notion's REST OAuth
+      flow)
+    - Implement token exchange and refresh logic (Basic auth; persist new refresh token on every refresh)
+    human_must:
+    - Sign in to the Developer portal (https://app.notion.com/developers/connections)
+    - Click 'Create new connection' under Build → Public connections
+    - Choose the immutable installation scope
+    - Enter redirect URI(s) in the creation form
+    - Retrieve the OAuth client ID/secret from the Configuration tab
+    - Submit a Marketplace listing for review, if desired (5-10 business days)
+  composio_next:
+    managed: false
+    managed_note: Notion not found in Composio catalog; custom auth config required.
+    redirect_uri_to_register: https://backend.composio.dev/api/v3/toolkits/auth/callback
+    auth_config_fields:
+    - client_id
+    - client_secret
+    - redirect_uri
+    - authorization_endpoint
+    - token_endpoint
+    - scopes
+    auth_config_snippet: "from composio import Composio\n\ncomposio = Composio()\nauth_config = composio.auth_configs.create(\n\
+      \    name=\"Notion OAuth\",\n    auth_scheme=\"OAUTH2\",\n    credentials={\n        \"client_id\"\
+      : \"{{CLIENT_ID}}\",\n        \"client_secret\": \"{{CLIENT_SECRET}}\",\n        \"redirect_uri\"\
+      : \"https://backend.composio.dev/api/v3/toolkits/auth/callback\",\n        \"authorization_endpoint\"\
+      : \"https://api.notion.com/v1/oauth/authorize\",\n        \"token_endpoint\": \"https://api.notion.com/v1/oauth/token\"\
+      ,\n        \"scopes\": [\"read_content\", \"update_content\", \"insert_content\", \"read_comments\"\
+      , \"insert_comments\", \"read_user_information\"]\n    },\n    options={\"type\": \"use_custom_auth\"\
+      , \"auth_scheme\": \"OAUTH2\"}\n)"
+    mcp_note: Use custom auth config with OAuth2 scheme. Notion's authorize endpoint takes no scope parameter
+      — capabilities (read/update/insert content, read/insert comments, user info) are configured in the
+      Developer portal, and there is no 'delete_content' capability. Ensure redirect_uri matches the Developer
+      portal entry exactly.
+---
+
+# Notion OAuth App Setup Guide
+
+Register a Notion OAuth or public connection in the Developer portal (https://app.notion.com/developers/connections) to obtain an OAuth client ID and client secret. Internal connections use a static API token and have no OAuth flow. No review is required to start OAuth flows; installation scope (Any workspace vs. Selected workspaces only) is immutable after creation. Store all token response fields (access_token, refresh_token, bot_id, workspace_id), use HTTP Basic Auth at the token endpoint, and on refresh persist the new access token AND the new refresh token.
+
+## Difficulty & time
+
+Instant registration, no approval wait; only the immutable scope choice and credential handling require care. Marketplace listing is optional and takes a 5-10 business day review.
+
+- **Difficulty:** Light (2/5)
+- **Hands-on setup:** 15-30 minutes
+- **Approval wait:** None for OAuth; 5-10 business days if submitting an optional Marketplace listing
+
+## Prerequisites
+
+- **Required:** Notion account — Workspace owner access is required: 'You are required to be a workspace owner to create a connection.'
+- **Required:** Developer portal access — Sign in at https://app.notion.com/developers/connections (https://www.notion.so/my-integrations redirects there).
+- **Required:** Redirect URI — Registered under OAuth Domain & URIs in the connection settings. Notion's docs do not publish HTTPS/localhost rules for redirect URIs. For Composio: https://backend.composio.dev/api/v3/toolkits/auth/callback
+
+## Step-by-step
+
+### 1. Open the Developer portal and sign in (https://app.notion.com/developers/connections)
+Navigate to the Developer portal and sign in with your Notion account.
+*[~1-2 minutes, human step; evidence: verified_from_docs]*
+> The legacy https://www.notion.so/my-integrations URL redirects to this portal. Use the workspace owner account that will own the connection.
+
+### 2. Create a new connection (OAuth/public) (Developer portal → Build → Public connections → Create new connection)
+Click 'Create new connection' and fill in the required fields.
+*[~1 minute, human step; evidence: verified_from_docs]*
+> 'OAuth integrations and public integrations use the same OAuth authorization flow' — they differ only in installation scope. Internal connections use a static API token and have no OAuth flow, so pick the OAuth/public path.
+
+### 3. Configure basic information and capabilities (Connection creation form)
+Fill in connection name (required) and development workspace, optionally upload a logo, and select capabilities (read content, update content, insert content, etc.).
+*[~2-3 minutes, human step; evidence: verified_from_docs]*
+> The authorization prompt presents the connection's capabilities to the user. Description/categories/images are separate Marketplace 'Listings' details managed after creation, not creation-form fields.
+
+### 4. Choose installation scope (immutable) (Connection creation form → Installation scope)
+Select either 'Any workspace' or 'Selected workspaces only'. 'Installation scope is set once, at creation time, and can't be changed afterward.'
+*[~1 minute, human step; evidence: verified_from_docs]*
+> 'Any workspace' is Marketplace-eligible and installable by any Notion user; 'Selected workspaces only' is not Marketplace-eligible — 'If you pick Selected workspaces only and later want to list on the Marketplace, create a new connection.'
+
+### 5. Add redirect URI(s) (Connection creation form → OAuth configuration (OAuth Domain & URIs))
+Add one or more redirect URIs. Include https://backend.composio.dev/api/v3/toolkits/auth/callback for Composio.
+*[~1-2 minutes, human step; evidence: verified_from_docs]*
+> Multiple URIs are supported. If more than one redirect URI is registered (or redirect_uri was supplied in the Authorization URL), redirect_uri is REQUIRED in the token exchange; with exactly one URI and no query-param redirect_uri, it is NOT allowed. HTTPS/localhost rules and exact-match/trailing-slash behavior are not documented by Notion.
+
+### 6. (Optional) Add template URL (Configuration tab → Basic information → 'Notion URL for optional template')
+Provide the URL of a public Notion page to offer as a template during the auth flow.
+*[~1 minute, human step; evidence: verified_from_docs]*
+> Configured in the Configuration tab after creation, not in the creation form. Users can duplicate the template instead of selecting pages; if they do, duplicated_template_id is returned in the token response.
+
+### 7. Retrieve credentials from the Configuration tab (Connection settings → Configuration tab)
+After creation, open the Configuration tab and copy the OAuth client ID and client secret; store them in a secret manager or environment variables.
+*[~1 minute, human step; evidence: verified_from_docs]*
+> Notion's docs do NOT say the secret is shown only once — the docs say to 'access the connection's secrets in the Configuration tab' after creation — but they warn these values should be protected and never included in source code or version control.
+
+## Gotchas
+
+- **Installation scope is immutable** — Scope is set once at creation and can't be changed. 'Selected workspaces only' connections are not Marketplace-eligible; switching later means creating a new connection and re-authorizing users.
+  - Handle: Decide before creating: Marketplace or any-user app → 'Any workspace'; restricted internal tool → 'Selected workspaces only'.
+- **Client Secret is retrievable, not shown-only-once** — The claim that the client secret is shown only once is not in Notion's docs; the client ID and client secret can be retrieved from the Configuration tab. A documented regeneration path for the OAuth client secret does not exist.
+  - Handle: Store in a secret manager or environment variables, never in source control; limit who can read production secrets.
+- **Token response contains required metadata and rotates both tokens** — API calls need bot_id, workspace_id, and refresh_token — not just access_token. Refreshing 'will generate a new access token and a new refresh token', so the old refresh token stops working.
+  - Handle: Persist the full token response JSON; on refresh, store BOTH the new access token and the new refresh token.
+- **Token endpoint uses HTTP Basic Auth** — The token request 'is authorized using HTTP Basic Authentication' with the colon-delimited CLIENT_ID:CLIENT_SECRET pair, base64-encoded in the Authorization header; the OpenAPI spec defines security as basicAuth. Requests also require the Notion-Version header.
+  - Handle: Implement token exchange (authorization_code and refresh_token grants) with the Basic Auth header; send Notion-Version on API requests.
+- **Capabilities replace traditional scopes (and there is no delete-content capability)** — The authorize URL takes no scope parameter — capabilities (read/update/insert content, read/insert comments, user info level) are configured in the Developer portal. Changing capabilities requires public users to re-authenticate. No 'delete content' capability exists.
+  - Handle: Configure all needed capabilities in the portal before users authorize; request the minimum ('The fewer capabilities you request, the more likely a workspace admin will be able to install your connection').
+- **redirect_uri in the token request is conditional** — If more than one redirect URI is registered under OAuth Domain & URIs (or redirect_uri was supplied in the Authorization URL), the token request must include redirect_uri; with a single URI and no query-param redirect_uri, including it is not allowed.
+  - Handle: Match your token-exchange code to your registered URI count. Notion does not document exact-match/trailing-slash/case rules; follow standard OAuth practice and test.
+
+## Common blockers
+
+- **Wrong installation scope chosen** — Create a new connection with the correct scope and migrate users via re-authorization ('If you pick Selected workspaces only and later want to list on the Marketplace, create a new connection.').
+  - Escalation: Not documented; Notion's docs only say to create a new connection.
+- **Client secret lost or exposed** — Retrieve the client ID and client secret from the Configuration tab in the Developer portal; update all deployments.
+  - Escalation: Secret regeneration is not documented in Notion's docs; credential-security guidance covers revoking/refreshing tokens but not the OAuth client secret.
+
+## What the agent can do vs. you
+
+**An agent can:** Research Notion OAuth endpoints and parameters; Prepare the list of required capabilities (no 'delete content' capability exists); Draft connection details (name, redirect URIs); Construct authorization URL with state parameter (PKCE is not documented for Notion's REST OAuth flow); Implement token exchange and refresh logic (Basic auth; persist new refresh token on every refresh).
+**You must:** Sign in to the Developer portal (https://app.notion.com/developers/connections); Click 'Create new connection' under Build → Public connections; Choose the immutable installation scope; Enter redirect URI(s) in the creation form; Retrieve the OAuth client ID/secret from the Configuration tab; Submit a Marketplace listing for review, if desired (5-10 business days).
+
+## Connect it via Composio
+
+Register this redirect URI in the provider console: `https://backend.composio.dev/api/v3/toolkits/auth/callback`
+Then create the auth config with: client_id, client_secret, redirect_uri, authorization_endpoint, token_endpoint, scopes.
+
+```python
+from composio import Composio
+
+composio = Composio()
+auth_config = composio.auth_configs.create(
+    name="Notion OAuth",
+    auth_scheme="OAUTH2",
+    credentials={
+        "client_id": "{{CLIENT_ID}}",
+        "client_secret": "{{CLIENT_SECRET}}",
+        "redirect_uri": "https://backend.composio.dev/api/v3/toolkits/auth/callback",
+        "authorization_endpoint": "https://api.notion.com/v1/oauth/authorize",
+        "token_endpoint": "https://api.notion.com/v1/oauth/token",
+        "scopes": ["read_content", "update_content", "insert_content", "read_comments", "insert_comments", "read_user_information"]
+    },
+    options={"type": "use_custom_auth", "auth_scheme": "OAUTH2"}
+)
+```
+
+Use custom auth config with OAuth2 scheme. Notion's authorize endpoint takes no scope parameter — capabilities (read/update/insert content, read/insert comments, user info) are configured in the Developer portal, and there is no 'delete_content' capability. Ensure redirect_uri matches the Developer portal entry exactly.
+
+## Evidence
+
+- [Notion Docs — Authorization](https://developers.notion.com/guides/get-started/authorization) — OAuth flow (authorize URL params: client_id, redirect_uri, response_type=code, owner=user, state — no scope/PKCE param), HTTP Basic auth at https://api.notion.com/v1/oauth/token, full token response incl. refresh_token, refresh rotation (new access + new refresh token), template URL in Configuration tab, 'Allow access' consent with page picker, secrets in Configuration tab, and 'Marketplace submission or review is not required'.
+- [Notion Docs — Public connections](https://developers.notion.com/guides/get-started/public-connections) — Creation flow (Build → Public connections → Create new connection), form fields (name + development workspace, redirect URI(s), installation scope, capabilities), immutable installation scope with Marketplace eligibility ('Any workspace' eligible, 'Selected workspaces only' not), client ID/secret retrieved from Configuration tab, per-user OAuth consent.
+- [Notion Docs — List on the Marketplace](https://developers.notion.com/guides/get-started/marketplace-listing) — Marketplace listing is optional and separate from building; only 'Any workspace' public connections are eligible; Listings section workflow; official review timeline of 5-10 business days; general rejection reasons (brand/trademark, quality, baseline criteria).
+- [Notion Docs — Overview (connection types)](https://developers.notion.com/guides/get-started/overview) — Four connection types (personal access token, internal connection, OAuth integration, public integration); 'OAuth integrations and public integrations use the same OAuth authorization flow'; Marketplace listing 'Optional, subject to review'; capabilities chosen per connection.
+- [Notion Docs — Connection capabilities](https://developers.notion.com/reference/capabilities) — Exact capability list: read/update/insert content, read/insert comments, agent capabilities, user info levels (none / without email / with email); NO delete-content capability; capabilities changeable in portal but public users must re-authenticate; minimum-capability best practice.
+- [Notion Docs — Request limits](https://developers.notion.com/reference/request-limits) — Current rate limits: 180 requests/60s window (avg 3/s) on all plans except Business/Enterprise at 600/60s (avg 10/s); budget spendable at any pace; separate shared per-workspace limit; ~3 req/s per connection for data source queries; Retry-After header and additional_data.retry_after documented.
+- [Notion Docs — Create a token (POST /v1/oauth/token)](https://developers.notion.com/reference/create-a-token) — OpenAPI spec: basicAuth security scheme, grant_type authorization_code/refresh_token, conditional redirect_uri rules tied to 'OAuth Domain & URIs', required response fields (access_token, token_type, refresh_token, bot_id, workspace_id, owner, duplicated_template_id), Notion-Version header required.
+- [Notion Docs — Refresh a token](https://developers.notion.com/reference/refresh-a-token) — Refresh endpoint semantics: 'Refreshes an access token, generating a new access token and new refresh token' via grant_type=refresh_token.
+- [Notion Docs — Secure API tokens](https://developers.notion.com/guides/get-started/handling-api-keys) — Credential security best practices (secret manager, no commits, environment variables), /v1/oauth/* endpoints intentionally lack CORS (client secret must stay server-side), token rotation guidance, exposure response steps.
+- [Notion Developer portal — Connections console](https://app.notion.com/developers/connections) — The actual console URL where connections are created and managed, as linked from the official Authorization and Public connections guides.
+- [Notion — legacy My integrations URL (redirects)](https://www.notion.so/my-integrations) — Verified 307 redirect chain: notion.so/my-integrations → notion.so/developers/connections → app.notion.com/developers/connections, confirming the current console location.
+- [Notion Help Center — Create integrations with the Notion API](https://www.notion.com/help/create-integrations-with-the-notion-api) — Workspace owners only can create connections; name (required) and optional logo at creation; capability levels incl. user info with/without email; 'All newly added connections are internal initially' with a documented path to convert to public.
+
+**Could not verify:**
+- Exact access token TTL (not documented; token response includes refresh_token but no expiry fields)
+- Exact refresh token TTL (not documented)
+- HTTPS/localhost requirements for redirect URIs (not stated in Notion's docs; standard OAuth guidance applies)
+- Exact-match semantics for redirect URIs (trailing slash, query params, case) (not documented by Notion; standard OAuth practice)
+- Whether the OAuth client secret can be regenerated after creation (not documented; secret is retrievable from the Configuration tab)
+- PKCE for the REST API OAuth flow (no code_challenge parameter documented; PKCE documented only for Notion MCP clients)
+- Maximum redirect URIs per app (not specified; managed under OAuth Domain & URIs)
+- Detailed Marketplace rejection criteria (official FAQ lists general categories only: brand/trademark, quality, baseline criteria)
+- Integration ownership transfer process (not documented)
+- Whether accepting Notion API Terms of Service/Developer Policy is a required portal step (not documented in the guides consulted)
+
+*Last checked: 2026-11-03 · Status: `stable` · Generated by agent:crewai+nim:nvidia/nemotron-3-ultra-550b-a55b · Verified by human:verification-pass*

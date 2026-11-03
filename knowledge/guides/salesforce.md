@@ -1,0 +1,551 @@
+---
+type: oauth_guide
+okf_version: '0.2'
+resource: salesforce
+title: Salesforce OAuth App Setup Guide (External Client Apps)
+tags:
+- appexchange
+- external-client-apps
+- oauth2
+- salesforce
+- security-review
+status: stable
+stale_after: '2027-05-03'
+generated:
+  by: agent:crewai+nim:nvidia/nemotron-3-ultra-550b-a55b
+  at: '2026-11-03T19:07:24.329469Z'
+verified:
+  by: human:verification-pass
+  at: '2026-11-03T19:33:11.846911Z'
+chatbot:
+  visible: true
+  priority: primary
+badge: library
+last_checked: '2026-11-04'
+unverified:
+- Whether resubmission of a failed Security Review incurs another $999 fee - official pages state a $999
+  submission fee may apply and that resubmissions take 2-3 weeks, but do not state that each resubmission
+  is charged again
+- Exact End-of-Support (EOS) timeline for existing Connected Apps - the Spring '26 article says Salesforce
+  'will be announcing End-of-Support soon'; no date published
+- Removal date of the Support-enabled 'Allow creation of connected apps' workaround - docs say only 'in
+  future releases, Salesforce Support won't be able to enable the creation of new connected apps'
+- Whether DAST scan reports are required for Security Review - the ISVforce pages reviewed list Salesforce
+  Code Analyzer and Source Scanner (Checkmarx); required scans vary by solution architecture and were
+  not itemized for OAuth-only apps
+- Draft's 'Idle TTL enforcement effective November 2026' - not found in any official page; all four controls
+  carry the May 11, 2026 compliance due date (claim removed from the guide)
+- 'Composio-specific behavior: exact managed OAuth callback URL format beyond the documented redirect
+  URI, and whether Composio handles PKCE/Refresh Token Rotation automatically for Salesforce - non-Salesforce
+  source, confirm with Composio documentation'
+sources:
+- url: https://help.salesforce.com/s/articleView?id=005228017&language=en_US&type=1
+  title: 'Salesforce Platform: New Connected Apps Can No Longer Be Created in Spring ''26 (Salesforce
+    Help)'
+  what_it_supports: Connected App creation blocked as of Spring '26 via UI and Metadata API (package installation
+    excepted); Support workaround ends in future releases; existing apps keep working; ECA migration tool;
+    'Manage External Client Apps' permission for SFDX/Metadata API deployment; local ECAs not copied on
+    sandbox refresh/clone; EOS not yet announced.
+- url: https://help.salesforce.com/s/articleView?id=005387798&language=en_US&type=1
+  title: Salesforce Connected Apps & ECA Security Controls - Partner App FAQs (Salesforce Help)
+  what_it_supports: 'Four mandatory controls (PKCE, RTR, 30-day Idle TTL, RT IP Allowlist) all due May
+    11, 2026; in-scope = you own the config AND >2 customer production orgs; customer-created apps out
+    of scope; Review Controls self-attest/lock irreversibility; $999 security review submission fee may
+    apply (PAM confirms); 10,000-IP allowlist limit (change log: raised from 256 on Sep 23, 2026); Metadata
+    API can deactivate Idle TTL/IP Allowlist; invalid_grant behavior; IP propagation delay.'
+- url: https://help.salesforce.com/s/articleView?id=005318040&language=en_US&type=1
+  title: Connected Apps (CAs) and External Client Apps (ECAs) AppExchange Security Review Submission Guidance
+    (Salesforce Help)
+  what_it_supports: New integrations must use ECAs; packaging-requirements table (mandatory when ISV controls
+    callback URLs, uses own credentials/JWT cert, or ships canvas); least-privilege scopes with written
+    justification for web/full; no mixed-use callback URLs; submission documentation (usage disclosure,
+    secrets management, client key not secret); flows not allowed (device, implicit, username-password
+    retiring Winter '27).
+- url: https://help.salesforce.com/s/articleView?id=xcloud.external_client_apps.htm&type=5
+  title: External Client Apps (Salesforce Help)
+  what_it_supports: Local vs packageable ECAs (distribution state); local apps used in a single org; 2GP
+    managed packaging for distribution; global vs local OAuth settings files (secrets never packaged);
+    local ECAs not copied to sandboxes; create in App Manager.
+- url: https://developer.salesforce.com/docs/platform/isvforce/guide/secure-code-ac-eca.html
+  title: Secure Your Connected Apps and External Client Apps (ISVforce Guide)
+  what_it_supports: Four controls with per-control compliance table (all May 11, 2026); applies to partner
+    apps in >2 customer production orgs; PKCE client changes (code_verifier 43-128 chars, S256); RTR client
+    changes and race conditions; sliding 30-day idle TTL; IP allowlist configuration; Review Controls
+    self-attestation and locking; enforcement = possible de-listing/suspension.
+- url: https://developer.salesforce.com/docs/platform/isvforce/guide/security-review-how-it-works.html
+  title: How the AgentExchange Security Review Works (ISVforce Guide)
+  what_it_supports: Security review required to distribute managed packages/Platform API solutions; five
+    stages; ISV Partner Program enrollment, Lightning Ready, provider profile prerequisites; Developer
+    Edition org + documentation required; Code Analyzer and Source Scanner (Checkmarx) scans; turnaround
+    estimates 1-2 weeks verification + 3-4 weeks first-time testing (2-3 weeks resubmission); free distribution
+    pays no fee; fee paid via submission interface.
+- url: https://developer.salesforce.com/docs/platform/sfdx-dev/guide/sfdx-dev-auth-eca.html
+  title: Create an External Client App in Your Org (Salesforce DX Developer Guide)
+  what_it_supports: 'Creating a local ECA in your own org without any packaging: Setup -> App Manager
+    -> New External Client App; Enable OAuth; callback URL (localhost example); scopes api + web + refresh_token/offline_access;
+    consumer key/secret retrieval later via External Client App Manager -> Settings -> OAuth Settings
+    -> Consumer Key and Secret; 90-day refresh token validity best practice.'
+- url: https://help.salesforce.com/s/articleView?id=xcloud.connected_app_create_api_integration.htm&type=5
+  title: Enable OAuth Settings for API Integration (Salesforce Help)
+  what_it_supports: Callback URL = OAuth redirect URI, must use HTTPS or custom URI scheme, exact match
+    against registered values, 2000-char limit; scope selection; PKCE requirement setting; Require Secret
+    for Web Server/Refresh Token Flow; Enable Refresh Token Rotation behavior (old token invalidated after
+    use); permission table (Customize Application + Manage Connected Apps).
+- url: https://help.salesforce.com/s/articleView?id=xcloud.remoteaccess_oauth_flows.htm&type=5
+  title: OAuth Authorization Flows (Salesforce Help)
+  what_it_supports: All flows except SAML Assertion require an external client app; default five authorizations
+    per external client app per user with longest-unused access token revoked; flow use cases (web server,
+    refresh token, JWT bearer, client credentials); user-agent and username-password flows discouraged/blocked.
+- url: https://help.salesforce.com/s/articleView?id=xcloud.remoteaccess_oauth_tokens_scopes.htm&type=5
+  title: OAuth Tokens and Scopes (Salesforce Help)
+  what_it_supports: 'Scope values: api, full (encompasses all scopes, does not return a refresh token),
+    refresh_token/offline_access (synonymous), web, openid; refresh tokens issued when refresh_token or
+    offline_access requested; endpoint path examples /services/oauth2/authorize.'
+- url: https://help.salesforce.com/s/articleView?id=xcloud.connected_apps_and_external_client_apps_features.htm&type=5
+  title: Comparison of Connected Apps and External Client Apps Features (Salesforce Help)
+  what_it_supports: ECAs are the new generation of connected apps; connected apps restricted to 1GP packaging
+    (2GP restricted) vs ECA 2GP available; consumer key/secret rotation available for both; username-password
+    flow not available for ECAs; sandbox copy behavior.
+- url: https://help.salesforce.com/s/articleView?id=xcloud.connected_app_create.htm&type=5
+  title: Create a Connected App (Salesforce Help)
+  what_it_supports: Connected app creation flow and editions; Spring '26 restriction note recommending
+    ECAs; links to configure basic/OAuth settings.
+- url: https://help.salesforce.com/s/articleView?id=xcloud.remoteaccess_oauth_web_server_flow.htm&type=5
+  title: OAuth 2.0 Web Server Flow for Web App Integration (Salesforce Help)
+  what_it_supports: Authorization endpoint path /services/oauth2/authorize and token endpoint /services/oauth2/token;
+    redirect_uri must match a registered Callback URL value or approval fails; consumer key retrieval
+    via App Manager -> View -> Manage Consumer Details; PKCE code_challenge/code_verifier parameters.
+- url: https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/intro_understanding_authentication.htm
+  title: Authorization Through External Client Apps or Connected Apps and OAuth 2.0 (REST API Developer
+    Guide)
+  what_it_supports: REST API access requires an external client app or connected app with OAuth 2.0; Spring
+    '26 connected app creation restriction; consolidated pointers to ECA/OAuth docs.
+- url: https://developer.salesforce.com/docs/platform/mobile-sdk/guide/connected-apps-howto.html
+  title: Create a Connected App (Mobile SDK Development Guide)
+  what_it_supports: App creation steps for mobile; consumer key can be looked up later via App Manager
+    -> View; callback URL must match the app's redirect URI; custom URI schemes (sfdc://) for mobile,
+    HTTPS for IdP use cases; Spring '26 restriction note.
+- url: https://developer.salesforce.com/docs/platform/mobile-sdk/guide/oauth-scope-parameter-values.html
+  title: Scope Parameter Values (Mobile SDK Development Guide)
+  what_it_supports: Scope descriptions; refresh_token/web/api sufficient for most apps; full encompasses
+    all scopes and does not return a refresh token; refresh_token/offline_access synonymous.
+- url: https://developer.salesforce.com/docs/platform/mobile-sdk/guide/sso-provider-sfdc.html
+  title: Configure a Salesforce Authentication Provider (Mobile SDK Development Guide)
+  what_it_supports: 'OAuth endpoint URL forms: host must end in .salesforce.com with path ending /services/oauth2/authorize
+    (example https://login.salesforce.com/services/oauth2/authorize) and /services/oauth2/token (example
+    https://login.salesforce.com/services/oauth2/token).'
+guide:
+  summary: 'Create a Salesforce External Client App (ECA) for OAuth2 integration. New Connected App creation
+    is restricted as of Spring ''26 (existing connected apps keep working; Support can enable creation
+    on request), so ECAs are the path for new integrations. For your own org, create a LOCAL ECA in Setup
+    -> App Manager: no DevHub, no packaging, no Security Review, and the May 11, 2026 partner deadline
+    does not apply to customer-created apps. DevHub/PBO, 2GP managed packaging, the four mandatory security
+    controls (PKCE, Refresh Token Rotation, 30-day Idle TTL, Refresh Token IP Allowlist, due May 11, 2026),
+    and AppExchange Security Review apply only when you DISTRIBUTE the app - in scope if you own the app
+    config and it is used in more than two customer production orgs.'
+  app_website: https://www.salesforce.com/in/
+  developer_console: https://login.salesforce.com/
+  oauth_docs: https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/intro_oauth_and_connected_apps.htm
+  source_url: ''
+  difficulty:
+    level: 4
+    tier: Heavy review
+    verdict: 'A local ECA in your own org is straightforward: Setup -> App Manager -> New External Client
+      App, enable OAuth, set the callback URL and scopes - no packaging and no review. The heavy path
+      (DevHub/PBO, 2GP packaging, four security controls due May 11, 2026, AppExchange Security Review)
+      applies only when the app is distributed to other orgs (in scope if you own the config and it is
+      used in more than two customer production orgs).'
+    evidence: verified_from_docs
+    source_url: https://help.salesforce.com/s/articleView?id=xcloud.external_client_apps.htm&type=5
+  time:
+    hands_on: About 30 minutes for a local ECA (create in App Manager, enable OAuth, callback URL, scopes)
+      plus 10-15 minutes for the…
+    approval_wait: 'None for a local app used in your own org. AppExchange Security Review (only for distributed
+      apps): official estimates are 1-2 weeks for submission verification plus 3-4 weeks for first-time
+      Product Security testing (roughly 4-6 weeks tota…'
+    verdict: Plan for under 1 hour hands-on for a local ECA; add the roughly 4-6 week Security Review
+      cycle only if you distribute the app to other orgs.
+    evidence: verified_from_docs
+    source_url: https://developer.salesforce.com/docs/platform/isvforce/guide/security-review-how-it-works.html
+  prerequisites:
+  - item: Salesforce org admin access
+    detail: Any org edition that supports external client apps; create the app in Setup -> App Manager.
+      The 'Manage External Client Apps' permission is required for deployment users or service principals
+      that push ECA metadata via SFDX or the Metadata API. A DevHub/PBO is only needed when packaging
+      the ECA for distribution (for partners the DevHub is typically the PBO).
+    blocking: true
+    evidence: verified_from_docs
+    source_url: https://help.salesforce.com/s/articleView?id=005228017&language=en_US&type=1
+  - item: Salesforce CLI (SFDX) and 2GP packaging setup - only if packaging for distribution
+    detail: Optional for a local app. Required when the ECA must be packaged (2GP managed package) for
+      AppExchange distribution or to propagate to sandboxes - local ECAs are not copied when a sandbox
+      is cloned or refreshed.
+    blocking: false
+    evidence: verified_from_docs
+    source_url: https://help.salesforce.com/s/articleView?id=xcloud.external_client_apps.htm&type=5
+  - item: ISV Partner Program enrollment - only if submitting for Security Review
+    detail: Required to distribute on AppExchange. A security review submission fee of $999 may apply
+      - Salesforce says to work with your Partner Account Manager (PAM) to confirm applicability. If you
+      plan to distribute your solution for free, you do not pay the fee.
+    blocking: false
+    evidence: verified_from_docs
+    source_url: https://help.salesforce.com/s/articleView?id=005387798&language=en_US&type=1
+  - item: HTTPS callback URL ready
+    detail: 'The redirect URI must match one of the values registered in the app''s Callback URL field
+      exactly, or authorization fails. It must use HTTPS or a custom URI scheme; http://localhost is fine
+      for local development (e.g. http://localhost:1717/OauthRedirect). For Composio: https://backend.composio.dev/api/v3/toolkits/auth/callback'
+    blocking: true
+    evidence: verified_from_docs
+    source_url: https://help.salesforce.com/s/articleView?id=xcloud.connected_app_create_api_integration.htm&type=5
+  steps:
+  - n: 1
+    title: Log in to your Salesforce org with the required permissions
+    where: Salesforce Setup (your own org; DevHub/PBO only if packaging for distribution)
+    action: Log in as a user with permission to manage external client apps. If ECA metadata will be deployed
+      via SFDX or the Metadata API, the deployment user or service principal must be granted the 'Manage
+      External Client Apps' permission.
+    duration: 10 min
+    agent_automatable: false
+    human_because: Requires interactive login and permission verification in Salesforce UI.
+    nuances: For the ISV/distribution path, create the ECA in your DevHub org (for partners the DevHub
+      is typically the PBO); ECAs created in scratch orgs cannot be packaged.
+    evidence: verified_from_docs
+    source_url: https://help.salesforce.com/s/articleView?id=005228017&language=en_US&type=1
+  - n: 2
+    title: Create the External Client App in App Manager
+    where: Salesforce Setup -> App Manager -> New External Client App
+    action: 'In the Quick Find box enter App Manager, click App Manager, then click ''New External Client
+      App''. Fill in basic info: app name, API name, contact email, description.'
+    duration: 15 min
+    agent_automatable: false
+    human_because: Requires manual UI navigation and form submission in Salesforce Setup.
+    nuances: Connected app creation is restricted as of Spring '26 (existing connected apps keep working;
+      Salesforce Support can enable creation on request). New integrations must use ECAs.
+    evidence: verified_from_docs
+    source_url: https://developer.salesforce.com/docs/platform/sfdx-dev/guide/sfdx-dev-auth-eca.html
+  - n: 3
+    title: Configure OAuth settings, callback URL, and scopes
+    where: New ECA -> API (Enable OAuth Settings)
+    action: 'Click Enable OAuth. Enter the Callback URL (redirect URI) exactly: https://backend.composio.dev/api/v3/toolkits/auth/callback.
+      Select scopes: ''Manage user data via APIs (api)'' and ''Perform requests at any time (refresh_token,
+      offline_access)''. Avoid the ''full'' scope.'
+    duration: 15 min
+    agent_automatable: false
+    human_because: Callback URL must be entered precisely in Salesforce UI; scope selection requires human
+      judgment.
+    nuances: The redirect URI must match one of the registered Callback URL values exactly or approval
+      fails; it must use HTTPS or a custom URI scheme (localhost is fine for dev). 'full' encompasses
+      all other scopes and does not return a refresh token; Security Review requires written justification
+      for web/full scopes. refresh_token and offline_access are synonymous.
+    evidence: verified_from_docs
+    source_url: https://help.salesforce.com/s/articleView?id=xcloud.remoteaccess_oauth_tokens_scopes.htm&type=5
+  - n: 4
+    title: Save and copy the Consumer Key and Secret
+    where: External Client App Manager -> your app -> Settings tab
+    action: After creating the app, open App Manager -> External Client App Manager, select your app,
+      open the Settings tab, then OAuth Settings -> Consumer Key and Secret (you may be asked to verify
+      your identity). Copy the Consumer Key (client_id) and Consumer Secret (client_secret) for the Composio
+      auth config.
+    duration: 5 min
+    agent_automatable: false
+    human_because: Secrets require interactive retrieval and identity verification.
+    nuances: 'The consumer key and secret are NOT one-time-displayed: they can be viewed again later (App
+      Manager -> View -> Manage Consumer Details) and can be rotated. Treat them as secrets: store securely,
+      and for packaged ECAs share only the client key (never the secret) in Security Review documents.'
+    evidence: verified_from_docs
+    source_url: https://developer.salesforce.com/docs/platform/sfdx-dev/guide/sfdx-dev-auth-eca.html
+  - n: 5
+    title: Enable and lock the four security controls (in-scope partner apps)
+    where: ECA setup page -> OAuth settings; 'Review Controls' banner to lock
+    action: Enable OAuth PKCE, Refresh Token Rotation (RTR), Refresh Token Idle TTL (30-day), and Refresh
+      Token IP Allowlist. Test first, then click 'Review Controls' to self-attest and lock them permanently
+      (irreversible).
+    duration: 30 min
+    agent_automatable: false
+    human_because: Locking is irreversible and requires explicit human confirmation via pop-up.
+    nuances: The May 11, 2026 compliance deadline applies to partner apps you own that are used in more
+      than two customer production orgs; apps customers create for their own use are out of scope (adopting
+      the controls is still recommended). Idle TTL is a sliding 30-day window reset by each refresh-token
+      flow. Deploying the CA/ECA config via Metadata API can deactivate Idle TTL and IP Allowlist unless
+      the controls are activated and locked. After locking, IP ranges can still be updated (allow 30-45
+      minutes for propagation).
+    evidence: verified_from_docs
+    source_url: https://developer.salesforce.com/docs/platform/isvforce/guide/secure-code-ac-eca.html
+  - n: 6
+    title: Create a managed package (2GP) - only if distributing
+    where: SFDX / DevHub CLI
+    action: If the ECA will be distributed to other orgs, run `sf package create` and `sf package version
+      create` to package it in a second-generation managed package. Packaging is mandatory when the ISV
+      controls the callback URLs, uses its own client credentials or JWT certificate, or ships a canvas
+      app. Skip this step for a local app.
+    duration: 1-2 hours
+    agent_automatable: true
+    human_because: CLI commands can be scripted, but initial package setup requires human decisions on
+      versioning and metadata inclusion.
+    nuances: 'Local ECAs cannot be packaged and are not copied to sandboxes on clone/refresh - only packaged
+      ECAs are. OAuth consumer secrets are never packaged: ECAs split OAuth settings into a global file
+      (with secrets) that cannot be packaged and a local settings file.'
+    evidence: verified_from_docs
+    source_url: https://help.salesforce.com/s/articleView?id=005318040&language=en_US&type=1
+  - n: 7
+    title: Submit for AppExchange Security Review - only if distributing
+    where: AppExchange/AgentExchange Partner Console and Partner Security Portal
+    action: If you own the app config and it is used in more than two customer production orgs, enroll
+      in the ISV Partner Program, prepare a Developer Edition org with the solution installed plus documentation,
+      run the required scans (Salesforce Code Analyzer, Source Scanner), and submit via the security review
+      submission interface, paying the review fee ($999 may apply - confirm with your PAM; free distribution
+      pays no fee).
+    duration: 2-4 hours prep + ~4-6 weeks review
+    agent_automatable: false
+    human_because: Requires legal acceptance, payment, document preparation, and partner portal interaction.
+    nuances: 'Official estimates: 1-2 weeks for submission verification plus 3-4 weeks for first-time
+      Product Security testing; resubmissions take 2-3 weeks. Disclose CA/ECA usage and secrets management,
+      submit credentials for all integrations to avoid delays, and share only the client key (not the
+      secret) for packaged ECAs.'
+    evidence: verified_from_docs
+    source_url: https://developer.salesforce.com/docs/platform/isvforce/guide/security-review-how-it-works.html
+  - n: 8
+    title: Configure Composio auth config with ECA credentials
+    where: Composio dashboard or SDK
+    action: Create auth config using client_id, client_secret, and required scopes. Set redirect URI to
+      match Composio callback.
+    duration: 10 min
+    agent_automatable: true
+    human_because: Can be automated via Composio SDK once credentials are available.
+    nuances: Composio managed OAuth handles token exchange; ensure PKCE/RTR compatibility.
+    evidence: reported
+    source_url: ''
+  gotchas:
+  - title: Connected App creation restricted as of Spring '26
+    why_it_matters: As of the Spring '26 release, new Connected Apps cannot be created via UI or Metadata
+      API (package installation excepted). Existing connected apps continue to work - editing, installation,
+      and deletion are unaffected.
+    how_to_handle: Use the External Client Apps path for new integrations. Salesforce Support can enable
+      connected app creation on request as a temporary workaround, but in future releases even Support
+      will not be able to enable it. End-of-support timing for existing connected apps has not been announced.
+    evidence: verified_from_docs
+    source_url: https://help.salesforce.com/s/articleView?id=005228017&language=en_US&type=1
+  - title: Security controls locking is irreversible
+    why_it_matters: Once 'Review Controls' is used to lock PKCE, RTR, Idle TTL, and IP Allowlist, they
+      cannot be unlocked or reverted.
+    how_to_handle: 'Test in a sandbox or test org first (you can preview idle-TTL behavior by manually
+      revoking an access token). Note two nuances: IP ranges remain editable after locking (allow 30-45
+      minutes for propagation), and updating the CA/ECA config via Metadata API can deactivate Idle TTL
+      and IP Allowlist unless the controls are activated and locked.'
+    evidence: verified_from_docs
+    source_url: https://help.salesforce.com/s/articleView?id=005387798&language=en_US&type=1
+  - title: Default limit of five authorizations per app per user
+    why_it_matters: Users can authorize an external client app multiple times (e.g. laptop, desktop, mobile).
+      The default is five authorizations per external client app per user; when the limit is reached,
+      the access token that has been unused for the longest period of time is revoked.
+    how_to_handle: Design the integration to reuse existing tokens and store tokens per user. Handle 'invalid_grant'
+      errors by prompting re-authorization.
+    evidence: verified_from_docs
+    source_url: https://help.salesforce.com/s/articleView?id=xcloud.remoteaccess_oauth_flows.htm&type=5
+  - title: Local ECAs not copied to sandbox on refresh/clone
+    why_it_matters: Only packaged ECAs propagate to sandbox environments. Local ECAs must be recreated
+      manually in each sandbox.
+    how_to_handle: Package ECAs in 2GP managed packages for sandbox propagation and CI/CD; for local apps,
+      recreate the ECA in each sandbox.
+    evidence: verified_from_docs
+    source_url: https://help.salesforce.com/s/articleView?id=005228017&language=en_US&type=1
+  - title: Refresh Token Rotation invalidates shared token copies
+    why_it_matters: With RTR enabled, each refresh call issues a new refresh token and the old one is
+      invalidated; using an already-rotated token returns 'invalid_grant' and also invalidates the current
+      refresh token and any associated access tokens. Multiple systems sharing one refresh token will
+      conflict.
+    how_to_handle: Use distinct ECAs for interactive (user-facing) vs automated (server-to-server) operations,
+      and handle parallel refresh requests to avoid race conditions. Prefer JWT Bearer or client credentials
+      flows for server-to-server - PKCE/RTR do not apply to them.
+    evidence: verified_from_docs
+    source_url: https://help.salesforce.com/s/articleView?id=005387798&language=en_US&type=1
+  - title: IP Allowlist hard limit of 10,000 total IPs
+    why_it_matters: Firm, non-extendable limit across all configured CIDR ranges (raised from 256 per
+      the article's Sep 23, 2026 change log). Broad ranges consume quota quickly.
+    how_to_handle: Use specific CIDR blocks, an egress gateway/NAT, or split across multiple ECAs. End-user
+      device flows (custom URI schemes) and Salesforce-to-Salesforce refresh token flows are exempt. Add
+      new ranges, wait 30-45 minutes for propagation, then enable the allowlist.
+    evidence: verified_from_docs
+    source_url: https://help.salesforce.com/s/articleView?id=005387798&language=en_US&type=1
+  blockers:
+  - issue: Missing 'Manage External Client Apps' permission
+    how_to_resolve: Assign the permission via a Permission Set or Profile in your org (or DevHub/PBO).
+      Required for deploying ECA metadata via SFDX or the Metadata API.
+    escalation: Contact your Salesforce Admin or Partner Account Manager if the permission cannot be granted.
+    evidence: verified_from_docs
+    source_url: https://help.salesforce.com/s/articleView?id=005228017&language=en_US&type=1
+  - issue: AppExchange Security Review not approved
+    how_to_resolve: Address the findings in the report, rerun the required automated scans, and resubmit
+      - resubmissions take an estimated 2-3 weeks. A security review submission fee of $999 may apply
+      (confirm with your PAM); free distribution pays no fee.
+    escalation: Engage your Partner Account Manager (PAM) or Security Review Operations for guidance on
+      fees and requirements.
+    evidence: verified_from_docs
+    source_url: https://developer.salesforce.com/docs/platform/isvforce/guide/security-review-how-it-works.html
+  - issue: Non-compliance with the May 11, 2026 security controls deadline (in-scope partner apps only)
+    how_to_resolve: Enable and lock all four controls before the deadline after testing in a sandbox.
+      The deadline applies only to partner apps you own that are used in more than two customer production
+      orgs - customer-created apps for their own use are out of scope, though adoption is recommended.
+      After the deadline Salesforce enforces technically and may suspend interoperation or de-list the
+      app.
+    escalation: 'Urgent: work with your PAM and Salesforce Support to remediate before enforcement.'
+    evidence: verified_from_docs
+    source_url: https://help.salesforce.com/s/articleView?id=005387798&language=en_US&type=1
+  agent_vs_human:
+    agent_can:
+    - Research OAuth endpoints, scopes, and security control requirements
+    - Prepare SFDX scripts for ECA metadata retrieval and packaging
+    - Draft Security Review submission documentation (disclosure, scan reports)
+    - Generate Composio auth config code snippets
+    - Monitor Salesforce release notes for policy changes
+    human_must:
+    - Log in to your Salesforce org (DevHub/PBO only when packaging for distribution) and navigate Setup
+      UI
+    - Create the ECA in App Manager and configure OAuth settings (callback URL, scopes)
+    - Copy Consumer Key/Secret from External Client App Manager (retrievable later, but store securely)
+    - Click 'Review Controls' to lock the four security controls (irreversible; only for in-scope partner
+      apps)
+    - Submit AppExchange Security Review if distributing (payment, legal acceptance, partner portal)
+    - Manage secrets rotation and storage in production infrastructure
+  composio_next:
+    managed: true
+    managed_note: Composio manages OAuth flow for Salesforce; handles token exchange, refresh, and PKCE.
+      Ensure ECA redirect URI matches Composio callback exactly.
+    redirect_uri_to_register: https://backend.composio.dev/api/v3/toolkits/auth/callback
+    auth_config_fields:
+    - client_id
+    - client_secret
+    - scopes
+    auth_config_snippet: "auth_config = composio.auth_configs.create(\n    app='salesforce',\n    options={'type':\
+      \ 'use_custom_auth', 'auth_scheme': 'OAUTH2',\n             'credentials': {'client_id': '{{CLIENT_ID}}',\
+      \ 'client_secret': '{{CLIENT_SECRET}}',\n                             'scopes': ['refresh_token',\
+      \ 'offline_access', 'api']}}\n)"
+    mcp_note: Use Composio managed OAuth for automatic token handling. Verify PKCE/RTR compatibility with
+      Composio's Salesforce integration.
+---
+
+# Salesforce OAuth App Setup Guide (External Client Apps)
+
+Create a Salesforce External Client App (ECA) for OAuth2 integration. New Connected App creation is restricted as of Spring '26 (existing connected apps keep working; Support can enable creation on request), so ECAs are the path for new integrations. For your own org, create a LOCAL ECA in Setup -> App Manager: no DevHub, no packaging, no Security Review, and the May 11, 2026 partner deadline does not apply to customer-created apps. DevHub/PBO, 2GP managed packaging, the four mandatory security controls (PKCE, Refresh Token Rotation, 30-day Idle TTL, Refresh Token IP Allowlist, due May 11, 2026), and AppExchange Security Review apply only when you DISTRIBUTE the app - in scope if you own the app config and it is used in more than two customer production orgs.
+
+## Difficulty & time
+
+A local ECA in your own org is straightforward: Setup -> App Manager -> New External Client App, enable OAuth, set the callback URL and scopes - no packaging and no review. The heavy path (DevHub/PBO, 2GP packaging, four security controls due May 11, 2026, AppExchange Security Review) applies only when the app is distributed to other orgs (in scope if you own the config and it is used in more than two customer production orgs).
+
+- **Difficulty:** Heavy review (4/5)
+- **Hands-on setup:** About 30 minutes for a local ECA (create in App Manager, enable OAuth, callback URL, scopes) plus 10-15 minutes for the…
+- **Approval wait:** None for a local app used in your own org. AppExchange Security Review (only for distributed apps): official estimates are 1-2 weeks for submission verification plus 3-4 weeks for first-time Product Security testing (roughly 4-6 weeks tota…
+
+## Prerequisites
+
+- **Required:** Salesforce org admin access — Any org edition that supports external client apps; create the app in Setup -> App Manager. The 'Manage External Client Apps' permission is required for deployment users or service principals that push ECA metadata via SFDX or the Metadata API. A DevHub/PBO is only needed when packaging the ECA for distribution (for partners the DevHub is typically the PBO).
+- Optional: Salesforce CLI (SFDX) and 2GP packaging setup - only if packaging for distribution — Optional for a local app. Required when the ECA must be packaged (2GP managed package) for AppExchange distribution or to propagate to sandboxes - local ECAs are not copied when a sandbox is cloned or refreshed.
+- Optional: ISV Partner Program enrollment - only if submitting for Security Review — Required to distribute on AppExchange. A security review submission fee of $999 may apply - Salesforce says to work with your Partner Account Manager (PAM) to confirm applicability. If you plan to distribute your solution for free, you do not pay the fee.
+- **Required:** HTTPS callback URL ready — The redirect URI must match one of the values registered in the app's Callback URL field exactly, or authorization fails. It must use HTTPS or a custom URI scheme; http://localhost is fine for local development (e.g. http://localhost:1717/OauthRedirect). For Composio: https://backend.composio.dev/api/v3/toolkits/auth/callback
+
+## Step-by-step
+
+### 1. Log in to your Salesforce org with the required permissions (Salesforce Setup (your own org; DevHub/PBO only if packaging for distribution))
+Log in as a user with permission to manage external client apps. If ECA metadata will be deployed via SFDX or the Metadata API, the deployment user or service principal must be granted the 'Manage External Client Apps' permission.
+*[~10 min, human step; evidence: verified_from_docs]*
+> For the ISV/distribution path, create the ECA in your DevHub org (for partners the DevHub is typically the PBO); ECAs created in scratch orgs cannot be packaged.
+
+### 2. Create the External Client App in App Manager (Salesforce Setup -> App Manager -> New External Client App)
+In the Quick Find box enter App Manager, click App Manager, then click 'New External Client App'. Fill in basic info: app name, API name, contact email, description.
+*[~15 min, human step; evidence: verified_from_docs]*
+> Connected app creation is restricted as of Spring '26 (existing connected apps keep working; Salesforce Support can enable creation on request). New integrations must use ECAs.
+
+### 3. Configure OAuth settings, callback URL, and scopes (New ECA -> API (Enable OAuth Settings))
+Click Enable OAuth. Enter the Callback URL (redirect URI) exactly: https://backend.composio.dev/api/v3/toolkits/auth/callback. Select scopes: 'Manage user data via APIs (api)' and 'Perform requests at any time (refresh_token, offline_access)'. Avoid the 'full' scope.
+*[~15 min, human step; evidence: verified_from_docs]*
+> The redirect URI must match one of the registered Callback URL values exactly or approval fails; it must use HTTPS or a custom URI scheme (localhost is fine for dev). 'full' encompasses all other scopes and does not return a refresh token; Security Review requires written justification for web/full scopes. refresh_token and offline_access are synonymous.
+
+### 4. Save and copy the Consumer Key and Secret (External Client App Manager -> your app -> Settings tab)
+After creating the app, open App Manager -> External Client App Manager, select your app, open the Settings tab, then OAuth Settings -> Consumer Key and Secret (you may be asked to verify your identity). Copy the Consumer Key (client_id) and Consumer Secret (client_secret) for the Composio auth config.
+*[~5 min, human step; evidence: verified_from_docs]*
+> The consumer key and secret are NOT one-time-displayed: they can be viewed again later (App Manager -> View -> Manage Consumer Details) and can be rotated. Treat them as secrets: store securely, and for packaged ECAs share only the client key (never the secret) in Security Review documents.
+
+### 5. Enable and lock the four security controls (in-scope partner apps) (ECA setup page -> OAuth settings; 'Review Controls' banner to lock)
+Enable OAuth PKCE, Refresh Token Rotation (RTR), Refresh Token Idle TTL (30-day), and Refresh Token IP Allowlist. Test first, then click 'Review Controls' to self-attest and lock them permanently (irreversible).
+*[~30 min, human step; evidence: verified_from_docs]*
+> The May 11, 2026 compliance deadline applies to partner apps you own that are used in more than two customer production orgs; apps customers create for their own use are out of scope (adopting the controls is still recommended). Idle TTL is a sliding 30-day window reset by each refresh-token flow. Deploying the CA/ECA config via Metadata API can deactivate Idle TTL and IP Allowlist unless the controls are activated and locked. After locking, IP ranges can still be updated (allow 30-45 minutes for propagation).
+
+### 6. Create a managed package (2GP) - only if distributing (SFDX / DevHub CLI)
+If the ECA will be distributed to other orgs, run `sf package create` and `sf package version create` to package it in a second-generation managed package. Packaging is mandatory when the ISV controls the callback URLs, uses its own client credentials or JWT certificate, or ships a canvas app. Skip this step for a local app.
+*[~1-2 hours, agent-automatable; evidence: verified_from_docs]*
+> Local ECAs cannot be packaged and are not copied to sandboxes on clone/refresh - only packaged ECAs are. OAuth consumer secrets are never packaged: ECAs split OAuth settings into a global file (with secrets) that cannot be packaged and a local settings file.
+
+### 7. Submit for AppExchange Security Review - only if distributing (AppExchange/AgentExchange Partner Console and Partner Security Portal)
+If you own the app config and it is used in more than two customer production orgs, enroll in the ISV Partner Program, prepare a Developer Edition org with the solution installed plus documentation, run the required scans (Salesforce Code Analyzer, Source Scanner), and submit via the security review submission interface, paying the review fee ($999 may apply - confirm with your PAM; free distribution pays no fee).
+*[~2-4 hours prep + ~4-6 weeks review, human step; evidence: verified_from_docs]*
+> Official estimates: 1-2 weeks for submission verification plus 3-4 weeks for first-time Product Security testing; resubmissions take 2-3 weeks. Disclose CA/ECA usage and secrets management, submit credentials for all integrations to avoid delays, and share only the client key (not the secret) for packaged ECAs.
+
+### 8. Configure Composio auth config with ECA credentials (Composio dashboard or SDK)
+Create auth config using client_id, client_secret, and required scopes. Set redirect URI to match Composio callback.
+*[~10 min, agent-automatable; evidence: reported]*
+> Composio managed OAuth handles token exchange; ensure PKCE/RTR compatibility.
+
+## Gotchas
+
+- **Connected App creation restricted as of Spring '26** — As of the Spring '26 release, new Connected Apps cannot be created via UI or Metadata API (package installation excepted). Existing connected apps continue to work - editing, installation, and deletion are unaffected.
+  - Handle: Use the External Client Apps path for new integrations. Salesforce Support can enable connected app creation on request as a temporary workaround, but in future releases even Support will not be able to enable it. End-of-support timing for existing connected apps has not been announced.
+- **Security controls locking is irreversible** — Once 'Review Controls' is used to lock PKCE, RTR, Idle TTL, and IP Allowlist, they cannot be unlocked or reverted.
+  - Handle: Test in a sandbox or test org first (you can preview idle-TTL behavior by manually revoking an access token). Note two nuances: IP ranges remain editable after locking (allow 30-45 minutes for propagation), and updating the CA/ECA config via Metadata API can deactivate Idle TTL and IP Allowlist unless the controls are activated and locked.
+- **Default limit of five authorizations per app per user** — Users can authorize an external client app multiple times (e.g. laptop, desktop, mobile). The default is five authorizations per external client app per user; when the limit is reached, the access token that has been unused for the longest period of time is revoked.
+  - Handle: Design the integration to reuse existing tokens and store tokens per user. Handle 'invalid_grant' errors by prompting re-authorization.
+- **Local ECAs not copied to sandbox on refresh/clone** — Only packaged ECAs propagate to sandbox environments. Local ECAs must be recreated manually in each sandbox.
+  - Handle: Package ECAs in 2GP managed packages for sandbox propagation and CI/CD; for local apps, recreate the ECA in each sandbox.
+- **Refresh Token Rotation invalidates shared token copies** — With RTR enabled, each refresh call issues a new refresh token and the old one is invalidated; using an already-rotated token returns 'invalid_grant' and also invalidates the current refresh token and any associated access tokens. Multiple systems sharing one refresh token will conflict.
+  - Handle: Use distinct ECAs for interactive (user-facing) vs automated (server-to-server) operations, and handle parallel refresh requests to avoid race conditions. Prefer JWT Bearer or client credentials flows for server-to-server - PKCE/RTR do not apply to them.
+- **IP Allowlist hard limit of 10,000 total IPs** — Firm, non-extendable limit across all configured CIDR ranges (raised from 256 per the article's Sep 23, 2026 change log). Broad ranges consume quota quickly.
+  - Handle: Use specific CIDR blocks, an egress gateway/NAT, or split across multiple ECAs. End-user device flows (custom URI schemes) and Salesforce-to-Salesforce refresh token flows are exempt. Add new ranges, wait 30-45 minutes for propagation, then enable the allowlist.
+
+## Common blockers
+
+- **Missing 'Manage External Client Apps' permission** — Assign the permission via a Permission Set or Profile in your org (or DevHub/PBO). Required for deploying ECA metadata via SFDX or the Metadata API.
+  - Escalation: Contact your Salesforce Admin or Partner Account Manager if the permission cannot be granted.
+- **AppExchange Security Review not approved** — Address the findings in the report, rerun the required automated scans, and resubmit - resubmissions take an estimated 2-3 weeks. A security review submission fee of $999 may apply (confirm with your PAM); free distribution pays no fee.
+  - Escalation: Engage your Partner Account Manager (PAM) or Security Review Operations for guidance on fees and requirements.
+- **Non-compliance with the May 11, 2026 security controls deadline (in-scope partner apps only)** — Enable and lock all four controls before the deadline after testing in a sandbox. The deadline applies only to partner apps you own that are used in more than two customer production orgs - customer-created apps for their own use are out of scope, though adoption is recommended. After the deadline Salesforce enforces technically and may suspend interoperation or de-list the app.
+  - Escalation: Urgent: work with your PAM and Salesforce Support to remediate before enforcement.
+
+## What the agent can do vs. you
+
+**An agent can:** Research OAuth endpoints, scopes, and security control requirements; Prepare SFDX scripts for ECA metadata retrieval and packaging; Draft Security Review submission documentation (disclosure, scan reports); Generate Composio auth config code snippets; Monitor Salesforce release notes for policy changes.
+**You must:** Log in to your Salesforce org (DevHub/PBO only when packaging for distribution) and navigate Setup UI; Create the ECA in App Manager and configure OAuth settings (callback URL, scopes); Copy Consumer Key/Secret from External Client App Manager (retrievable later, but store securely); Click 'Review Controls' to lock the four security controls (irreversible; only for in-scope partner apps); Submit AppExchange Security Review if distributing (payment, legal acceptance, partner portal); Manage secrets rotation and storage in production infrastructure.
+
+## Connect it via Composio
+
+Composio manages OAuth flow for Salesforce; handles token exchange, refresh, and PKCE. Ensure ECA redirect URI matches Composio callback exactly.
+
+Use Composio managed OAuth for automatic token handling. Verify PKCE/RTR compatibility with Composio's Salesforce integration.
+
+## Evidence
+
+- [Salesforce Platform: New Connected Apps Can No Longer Be Created in Spring '26 (Salesforce Help)](https://help.salesforce.com/s/articleView?id=005228017&language=en_US&type=1) — Connected App creation blocked as of Spring '26 via UI and Metadata API (package installation excepted); Support workaround ends in future releases; existing apps keep working; ECA migration tool; 'Manage External Client Apps' permission for SFDX/Metadata API deployment; local ECAs not copied on sandbox refresh/clone; EOS not yet announced.
+- [Salesforce Connected Apps & ECA Security Controls - Partner App FAQs (Salesforce Help)](https://help.salesforce.com/s/articleView?id=005387798&language=en_US&type=1) — Four mandatory controls (PKCE, RTR, 30-day Idle TTL, RT IP Allowlist) all due May 11, 2026; in-scope = you own the config AND >2 customer production orgs; customer-created apps out of scope; Review Controls self-attest/lock irreversibility; $999 security review submission fee may apply (PAM confirms); 10,000-IP allowlist limit (change log: raised from 256 on Sep 23, 2026); Metadata API can deactivate Idle TTL/IP Allowlist; invalid_grant behavior; IP propagation delay.
+- [Connected Apps (CAs) and External Client Apps (ECAs) AppExchange Security Review Submission Guidance (Salesforce Help)](https://help.salesforce.com/s/articleView?id=005318040&language=en_US&type=1) — New integrations must use ECAs; packaging-requirements table (mandatory when ISV controls callback URLs, uses own credentials/JWT cert, or ships canvas); least-privilege scopes with written justification for web/full; no mixed-use callback URLs; submission documentation (usage disclosure, secrets management, client key not secret); flows not allowed (device, implicit, username-password retiring Winter '27).
+- [External Client Apps (Salesforce Help)](https://help.salesforce.com/s/articleView?id=xcloud.external_client_apps.htm&type=5) — Local vs packageable ECAs (distribution state); local apps used in a single org; 2GP managed packaging for distribution; global vs local OAuth settings files (secrets never packaged); local ECAs not copied to sandboxes; create in App Manager.
+- [Secure Your Connected Apps and External Client Apps (ISVforce Guide)](https://developer.salesforce.com/docs/platform/isvforce/guide/secure-code-ac-eca.html) — Four controls with per-control compliance table (all May 11, 2026); applies to partner apps in >2 customer production orgs; PKCE client changes (code_verifier 43-128 chars, S256); RTR client changes and race conditions; sliding 30-day idle TTL; IP allowlist configuration; Review Controls self-attestation and locking; enforcement = possible de-listing/suspension.
+- [How the AgentExchange Security Review Works (ISVforce Guide)](https://developer.salesforce.com/docs/platform/isvforce/guide/security-review-how-it-works.html) — Security review required to distribute managed packages/Platform API solutions; five stages; ISV Partner Program enrollment, Lightning Ready, provider profile prerequisites; Developer Edition org + documentation required; Code Analyzer and Source Scanner (Checkmarx) scans; turnaround estimates 1-2 weeks verification + 3-4 weeks first-time testing (2-3 weeks resubmission); free distribution pays no fee; fee paid via submission interface.
+- [Create an External Client App in Your Org (Salesforce DX Developer Guide)](https://developer.salesforce.com/docs/platform/sfdx-dev/guide/sfdx-dev-auth-eca.html) — Creating a local ECA in your own org without any packaging: Setup -> App Manager -> New External Client App; Enable OAuth; callback URL (localhost example); scopes api + web + refresh_token/offline_access; consumer key/secret retrieval later via External Client App Manager -> Settings -> OAuth Settings -> Consumer Key and Secret; 90-day refresh token validity best practice.
+- [Enable OAuth Settings for API Integration (Salesforce Help)](https://help.salesforce.com/s/articleView?id=xcloud.connected_app_create_api_integration.htm&type=5) — Callback URL = OAuth redirect URI, must use HTTPS or custom URI scheme, exact match against registered values, 2000-char limit; scope selection; PKCE requirement setting; Require Secret for Web Server/Refresh Token Flow; Enable Refresh Token Rotation behavior (old token invalidated after use); permission table (Customize Application + Manage Connected Apps).
+- [OAuth Authorization Flows (Salesforce Help)](https://help.salesforce.com/s/articleView?id=xcloud.remoteaccess_oauth_flows.htm&type=5) — All flows except SAML Assertion require an external client app; default five authorizations per external client app per user with longest-unused access token revoked; flow use cases (web server, refresh token, JWT bearer, client credentials); user-agent and username-password flows discouraged/blocked.
+- [OAuth Tokens and Scopes (Salesforce Help)](https://help.salesforce.com/s/articleView?id=xcloud.remoteaccess_oauth_tokens_scopes.htm&type=5) — Scope values: api, full (encompasses all scopes, does not return a refresh token), refresh_token/offline_access (synonymous), web, openid; refresh tokens issued when refresh_token or offline_access requested; endpoint path examples /services/oauth2/authorize.
+- [Comparison of Connected Apps and External Client Apps Features (Salesforce Help)](https://help.salesforce.com/s/articleView?id=xcloud.connected_apps_and_external_client_apps_features.htm&type=5) — ECAs are the new generation of connected apps; connected apps restricted to 1GP packaging (2GP restricted) vs ECA 2GP available; consumer key/secret rotation available for both; username-password flow not available for ECAs; sandbox copy behavior.
+- [Create a Connected App (Salesforce Help)](https://help.salesforce.com/s/articleView?id=xcloud.connected_app_create.htm&type=5) — Connected app creation flow and editions; Spring '26 restriction note recommending ECAs; links to configure basic/OAuth settings.
+- [OAuth 2.0 Web Server Flow for Web App Integration (Salesforce Help)](https://help.salesforce.com/s/articleView?id=xcloud.remoteaccess_oauth_web_server_flow.htm&type=5) — Authorization endpoint path /services/oauth2/authorize and token endpoint /services/oauth2/token; redirect_uri must match a registered Callback URL value or approval fails; consumer key retrieval via App Manager -> View -> Manage Consumer Details; PKCE code_challenge/code_verifier parameters.
+- [Authorization Through External Client Apps or Connected Apps and OAuth 2.0 (REST API Developer Guide)](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/intro_understanding_authentication.htm) — REST API access requires an external client app or connected app with OAuth 2.0; Spring '26 connected app creation restriction; consolidated pointers to ECA/OAuth docs.
+- [Create a Connected App (Mobile SDK Development Guide)](https://developer.salesforce.com/docs/platform/mobile-sdk/guide/connected-apps-howto.html) — App creation steps for mobile; consumer key can be looked up later via App Manager -> View; callback URL must match the app's redirect URI; custom URI schemes (sfdc://) for mobile, HTTPS for IdP use cases; Spring '26 restriction note.
+- [Scope Parameter Values (Mobile SDK Development Guide)](https://developer.salesforce.com/docs/platform/mobile-sdk/guide/oauth-scope-parameter-values.html) — Scope descriptions; refresh_token/web/api sufficient for most apps; full encompasses all scopes and does not return a refresh token; refresh_token/offline_access synonymous.
+- [Configure a Salesforce Authentication Provider (Mobile SDK Development Guide)](https://developer.salesforce.com/docs/platform/mobile-sdk/guide/sso-provider-sfdc.html) — OAuth endpoint URL forms: host must end in .salesforce.com with path ending /services/oauth2/authorize (example https://login.salesforce.com/services/oauth2/authorize) and /services/oauth2/token (example https://login.salesforce.com/services/oauth2/token).
+
+**Could not verify:**
+- Whether resubmission of a failed Security Review incurs another $999 fee - official pages state a $999 submission fee may apply and that resubmissions take 2-3 weeks, but do not state that each resubmission is charged again
+- Exact End-of-Support (EOS) timeline for existing Connected Apps - the Spring '26 article says Salesforce 'will be announcing End-of-Support soon'; no date published
+- Removal date of the Support-enabled 'Allow creation of connected apps' workaround - docs say only 'in future releases, Salesforce Support won't be able to enable the creation of new connected apps'
+- Whether DAST scan reports are required for Security Review - the ISVforce pages reviewed list Salesforce Code Analyzer and Source Scanner (Checkmarx); required scans vary by solution architecture and were not itemized for OAuth-only apps
+- Draft's 'Idle TTL enforcement effective November 2026' - not found in any official page; all four controls carry the May 11, 2026 compliance due date (claim removed from the guide)
+- Composio-specific behavior: exact managed OAuth callback URL format beyond the documented redirect URI, and whether Composio handles PKCE/Refresh Token Rotation automatically for Salesforce - non-Salesforce source, confirm with Composio documentation
+
+*Last checked: 2026-11-04 · Status: `stable` · Generated by agent:crewai+nim:nvidia/nemotron-3-ultra-550b-a55b · Verified by human:verification-pass*
