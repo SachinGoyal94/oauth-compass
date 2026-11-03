@@ -9,5 +9,5 @@ beautifulsoup4>=4.13
 lxml>=5.3
 openai>=2.48.0,<4
 crewai>=1.15.0
-crewai-tools>=0.45.0
+crewai-tools[mcp]>=0.45.0
 composio>=0.31.0
