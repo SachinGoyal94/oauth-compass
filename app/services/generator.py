@@ -28,7 +28,7 @@ from app.okf import (
     GuideFrontmatter,
     write_okf_guide,
 )
-from app.services import composio, research
+from app.services import composio
 from app.services import nim as nim_service
 
 logger = logging.getLogger(__name__)
@@ -266,7 +266,7 @@ def _researcher_run(app: dict[str, Any], deep: bool, progress: ProgressCb, local
         llm=llm,
         verbose=False,
         allow_delegation=False,
-        max_iter=16 if deep else 12,
+        max_iter=24 if deep else 18,
     )
     task = Task(
         description=(
@@ -288,7 +288,11 @@ def _researcher_run(app: dict[str, Any], deep: bool, progress: ProgressCb, local
             f"{max_pages} official pages total: OAuth overview, app creation guide, scopes, redirect URI "
             "rules, verification/review policy, rate limits. Prefer developers.* / docs.* domains.\n"
             "4. If a search returns nothing useful, refine the query rather than guessing URLs; note "
-            "explicitly in the digest when the provider documents NOTHING about approval times.\n\n"
+            "explicitly in the digest when the provider documents NOTHING about approval times.\n"
+            f"5. ITERATION BUDGET: you have a hard limit of {24 if deep else 18} tool-using iterations. "
+            f"After roughly {20 if deep else 14} tool calls, STOP calling tools and write the RESEARCH "
+            "DIGEST from what you have gathered - an incomplete digest now beats a perfect one never. "
+            "Mark whatever you did not reach as UNVERIFIED.\n\n"
             "Rules: official sources only for facts; mark anything unconfirmed as UNVERIFIED.\n\n"
             f"{RESEARCH_DIGEST_SPEC}\n\n"
             "Return only the RESEARCH DIGEST."
@@ -297,9 +301,12 @@ def _researcher_run(app: dict[str, Any], deep: bool, progress: ProgressCb, local
         agent=researcher,
     )
 
+    gathered: list[str] = []
+
     def _on_step(step: Any) -> None:
-        text = str(getattr(step, "description", "") or step)[:140]
-        progress({"stage": "search", "message": f"Researching: {text}"})
+        text = str(getattr(step, "description", "") or step)
+        gathered.append(text[:2000])
+        progress({"stage": "search", "message": f"Researching: {text[:140]}"})
 
     crew = Crew(
         agents=[researcher],
@@ -310,11 +317,63 @@ def _researcher_run(app: dict[str, Any], deep: bool, progress: ProgressCb, local
         tracing=False,
         step_callback=_on_step,
     )
-    with MCPServerAdapter(mcp_params) as mcp_tools:
-        names = [getattr(t, "name", "?") for t in mcp_tools]
-        progress({"stage": "search", "message": f"Composio gateway online: {len(names)} tools"})
-        researcher.tools = list(local_tools) + list(mcp_tools)
-        result = crew.kickoff()
+    from pydantic import ValidationError as PydValidationError
+
+    adapter = None
+    mcp_tools = None
+    last_err: Exception | None = None
+    for attempt in range(1, 4):
+        try:
+            progress({"stage": "search", "message": f"Opening Composio research session (attempt {attempt}/3)…"})
+            adapter = MCPServerAdapter(mcp_params)
+            mcp_tools = adapter.__enter__()
+            break
+        except Exception as exc:  # noqa: BLE001 - cold-start connections can abort on first try
+            last_err = exc
+            if adapter is not None:
+                try:
+                    adapter.__exit__(type(exc), exc, exc.__traceback__)
+                except Exception:  # noqa: BLE001
+                    pass
+                adapter = None
+            if attempt < 3:
+                import time as _time
+
+                _time.sleep(3 * attempt)
+    if adapter is None or not mcp_tools:
+        detail = (str(last_err).strip() or type(last_err).__name__) if last_err else "unknown"
+        raise GuideWorkflowError(
+            f"Composio research session could not be established after 3 attempts ({detail}). "
+            "No fallback search exists by design — retry in a moment."
+        )
+    names = [getattr(t, "name", "?") for t in mcp_tools]
+    progress({"stage": "search", "message": f"Composio gateway online: {len(names)} tools"})
+    researcher.tools = list(local_tools) + list(mcp_tools)
+
+    try:
+        try:
+            result = crew.kickoff()
+        except PydValidationError as exc:
+            # Known crewai failure mode: the model ends its final iteration mid-tool-call,
+            # so TaskOutput receives a tool-call list instead of a string digest.
+            if "TaskOutput" not in str(exc):
+                raise
+            progress({"stage": "search",
+                      "message": "Researcher ran out of iterations mid-tool-call — retrying with write-now instruction…"})
+            task.description += (
+                "\n\nIMPORTANT: Your previous attempt ran out of iterations while calling tools. "
+                "Do NOT call any more tools. Write the RESEARCH DIGEST using ONLY the research "
+                "material already gathered below (verbatim tool outputs and actions from attempt 1). "
+                "Never invent or reconstruct any URL, number, or claim that is not present in that "
+                "material; mark whatever is not covered as UNVERIFIED.\n\n"
+                "RESEARCH MATERIAL FROM ATTEMPT 1 (verbatim):\n" + ("\n".join(gathered))[:32000]
+            )
+            result = crew.kickoff()
+    finally:
+        try:
+            adapter.__exit__(None, None, None)
+        except Exception:  # noqa: BLE001
+            pass
     return _strip_think(result)
 
 
@@ -409,8 +468,8 @@ def _build_frontmatter(payload: dict[str, Any], app: dict[str, Any], badge: Guid
         chatbot={"visible": True, "priority": "primary" if badge == "library" else "supporting"},
         badge=badge,
         last_checked=today,
-        unverified=payload.get("unverified", [])[:15],
-        sources=payload.get("sources", [])[:12],
+        unverified=payload.get("unverified", [])[:20],
+        sources=payload.get("sources", [])[:20],
         guide=payload["guide"],
     )
 
@@ -482,7 +541,7 @@ def generate_guide(
 
         path = _write_versioned_draft(frontmatter)
         report({"stage": "save", "message": f"Saved draft guide: {path.parent.name}/{path.name}"})
-        report({"stage": "done", "slug": frontmatter.resource, "message": "Guide ready"})
+        report({"stage": "done", "slug": frontmatter.resource, "version": path.stem, "message": "Guide ready"})
         return frontmatter
     except GuideWorkflowError:
         raise
