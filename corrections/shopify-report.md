@@ -1,4 +1,4 @@
-# Shopify OAuth Guide — Human Verification Report
+# Shopify OAuth Guide — Verification Report (agent-verified, human-supervised)
 
 Draft verified: `D:\Product_ops\knowledge\guides\drafts\shopify\v1.md`
 Corrections applied: `D:\Product_ops\corrections\shopify.json`

@@ -1,4 +1,4 @@
-# GitHub OAuth App Guide — Human Verification Report
+# GitHub OAuth App Guide — Verification Report (agent-verified, human-supervised)
 
 Verified against official GitHub documentation only (docs.github.com). Date: 2026-11-03.
 Draft: `knowledge/guides/drafts/github/v1.md` · Corrections: `corrections/github.json`

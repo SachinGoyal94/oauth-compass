@@ -1,4 +1,4 @@
-# Gmail OAuth Guide — Human Verification Report
+# Gmail OAuth Guide — Verification Report (agent-verified, human-supervised)
 
 Draft reviewed: `knowledge/guides/drafts/gmail/v1.md` (2026-11-03)
 Method: every substantive claim checked against official Google pages only (developers.google.com / support.google.com). JSON corrections in `corrections/gmail.json`.

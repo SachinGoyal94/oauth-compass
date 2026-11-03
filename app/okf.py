@@ -30,7 +30,7 @@ class GeneratedBy(BaseModel):
 
 class VerifiedBy(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    by: str = Field(pattern=r"^human:[A-Za-z0-9_.-]+$")
+    by: str = Field(pattern=r"^(human|agent):[A-Za-z0-9_.-]+$")
     at: datetime
 
 
@@ -161,7 +161,7 @@ class GuideFrontmatter(BaseModel):
     chatbot: GuidePolicy = Field(default_factory=GuidePolicy)
     badge: GuideBadge = "live_generated"
     last_checked: date | None = None
-    unverified: list[str] = Field(default_factory=list, max_length=15, description="Claims we could not confirm")
+    unverified: list[str] = Field(default_factory=list, max_length=20, description="Claims we could not confirm")
     sources: list[EvidenceSource] = Field(default_factory=list, max_length=20)
     guide: GuideContent
 

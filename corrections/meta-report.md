@@ -1,4 +1,4 @@
-# Meta (Facebook) OAuth Guide — Human Verification Report
+# Meta (Facebook) OAuth Guide — Verification Report (agent-verified, human-supervised)
 
 Draft: `knowledge/guides/drafts/meta-for-developers/v1.md`
 Corrections: `corrections/meta.json`

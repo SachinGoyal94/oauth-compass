@@ -14,7 +14,7 @@ generated:
   by: agent:crewai+nim:nvidia/nemotron-3-ultra-550b-a55b
   at: '2026-11-03T17:21:42.800522Z'
 verified:
-  by: human:verification-pass
+  by: agent:verification-crew
   at: '2026-11-03T17:41:17.942169Z'
 chatbot:
   visible: true

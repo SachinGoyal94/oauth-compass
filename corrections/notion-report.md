@@ -1,4 +1,4 @@
-# Notion OAuth Guide — Human Verification Report
+# Notion OAuth Guide — Verification Report (agent-verified, human-supervised)
 
 - Draft verified: `knowledge/guides/drafts/notion/v1.md`
 - Corrections written: `corrections/notion.json`

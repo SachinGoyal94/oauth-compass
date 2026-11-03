@@ -24,11 +24,10 @@ Generated on every guide write. Featured grid data source; excluded from retriev
 
 | Guide | Versions | Active |
 |---|---|---|
-| Airtable OAuth App Setup Guide | v1 | v1 |
 | Linear OAuth App Setup Guide | v1 | v1 |
 
 ## Governance summary
 
 - **Published guides:** 8
-- **Generated draft apps:** 2
+- **Generated draft apps:** 1
 - **Load errors:** 0

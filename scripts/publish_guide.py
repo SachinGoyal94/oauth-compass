@@ -90,7 +90,7 @@ def main() -> int:
         {
             "status": "stable",
             "badge": "library",
-            "verified": {"by": "human:verification-pass", "at": now.isoformat()},
+            "verified": {"by": "agent:verification-crew", "at": now.isoformat()},
             "last_checked": today.isoformat(),
             "stale_after": (today + timedelta(days=180)).isoformat(),
             "chatbot": {"visible": True, "priority": "primary"},

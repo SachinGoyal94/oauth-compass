@@ -1,4 +1,4 @@
-# Slack OAuth Guide v1 — Human Verification Report
+# Slack OAuth Guide v1 — Verification Report (agent-verified, human-supervised)
 
 Verified against official Slack documentation only (docs.slack.dev is Slack's official developer docs domain; all api.slack.com URLs cited in the draft 302-redirect there). Date: 2026-11-03. Corrections applied in `slack.json`.
 

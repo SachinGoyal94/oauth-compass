@@ -1,4 +1,4 @@
-# Salesforce OAuth Setup Guide (v1) — Human Verification Report
+# Salesforce OAuth Setup Guide (v1) — Verification Report (agent-verified, human-supervised)
 
 Verified 2026-11-04 against official Salesforce Help (help.salesforce.com) and Salesforce Developer documentation (developer.salesforce.com) only. Draft: `knowledge/guides/drafts/salesforce/v1.md`. Corrections applied: `corrections/salesforce.json`.
 
