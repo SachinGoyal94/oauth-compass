@@ -21,3 +21,6 @@ build/
 
 # zcode session files
 .zcode/
+
+# editor code-runner temp
+tempCodeRunnerFile.py
